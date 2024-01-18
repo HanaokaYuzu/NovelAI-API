@@ -1,0 +1,1 @@
+# <a style="background-color: rgb(25, 27, 49); border-radius: 5px;padding-left: 5px; padding-right: 5px; padding-top: 8px;"><img src="https://novelai.net/_next/static/media/pen-tip-light.47883c90.svg" height="30px" alt="NovelAI Icon"/></a> NovelAI-API
