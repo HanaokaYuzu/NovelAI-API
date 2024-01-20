@@ -186,3 +186,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Test files
+*test*.*
