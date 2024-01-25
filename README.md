@@ -1,4 +1,4 @@
-# <a style="background-color: rgb(25, 27, 49); border-radius: 5px;padding-left: 5px; padding-right: 5px; padding-top: 8px;"><img src="https://novelai.net/_next/static/media/pen-tip-light.47883c90.svg" height="30px" alt="NovelAI Icon"/></a> NovelAI-API
+# <img src="docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
 
 A lightweight asynchronous Python wrapper for the NovelAI image generation API supporting both web and api backend.
 
@@ -33,7 +33,8 @@ asyncio.run(main())
 from pathlib import Path
 
 async def main():
-    output = await client.generate_image(prompt="1girl", host="api")  # Choose host between "api" and "web"
+    # Choose host between "api" and "web"
+    output = await client.generate_image(prompt="1girl", host="api")
 
     path = Path("output")
     path.mkdir(parents=True, exist_ok=True)

@@ -99,6 +99,21 @@ class NAIClient:
 
     @running
     async def generate_image(self, prompt: str, host="api") -> dict:
+        """
+        Generate an image from a prompt.
+
+        Parameters
+        ----------
+        prompt : `str`
+            Prompt to generate an image from
+        host : `str`
+            Host to send the request. Either "api" or "web"
+
+        Returns
+        -------
+        `dict`
+            Dictionary with file names (`str`) as keys and file contents (`bytes`) as values
+        """
         assert prompt, "Prompt cannot be empty."
 
         assert host in (
