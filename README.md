@@ -1,10 +1,10 @@
-# <img src="docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
+# <img src="https://raw.githubusercontent.com/HanaokaYuzu/NovelAI-API/master/docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
 
-A lightweight asynchronous Python wrapper for the NovelAI image generation API supporting both web and api backend.
+A lightweight asynchronous Python wrapper for NovelAI image generation API. Supports both web and api backend.
 
 ## Installation
 
-```bash
+```sh
 pip install novelai
 ```
 
@@ -16,7 +16,7 @@ pip install novelai
 import asyncio
 from novelai import NAIClient
 
-# Replace string values with your actual account credentials
+# Replace argument values with your actual account credentials
 username = "Your NovelAI username"
 password = "Your NovelAI password"
 
@@ -43,6 +43,17 @@ async def main():
         Path(path / filename).write_bytes(data)
 
 asyncio.run(main())
+```
+
+### Use in CLI
+
+Optionally, a module function is also provided to directly generate access token in CLI.
+
+Once a access token is generated, it will be valid for 30 days. Token can be used as the authentication header to make requests to NovelAI.
+
+```sh
+# Replace argument values with your actual account credentials
+python3 -m novelai login <username> <password>
 ```
 
 ## References

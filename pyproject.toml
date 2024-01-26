@@ -7,7 +7,7 @@ name = "novelai"
 authors = [
     {name = "UZQueen"},
 ]
-description = "High-level async API for NovelAI image generation"
+description = "A lightweight async wrapper for NovelAI image generation API"
 readme = "README.md"
 license = {text = "MIT License"}
 keywords = ["API", "async", "NovelAI", "AI", "image generation"]
