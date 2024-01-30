@@ -9,7 +9,7 @@ from .types import User
 
 
 # https://github.com/Aedial/novelai-api/blob/main/novelai_api/utils.py
-def get_access_key(user: User) -> str:
+def encode_access_key(user: User) -> str:
     """
     Generate hashed access key from the user's username and password using the blake2 and argon2 algorithms.
 
