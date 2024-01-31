@@ -1,8 +1,19 @@
-API_HOST = "https://api.novelai.net"
-WEB_HOST = "https://image.novelai.net"
+from .types import DotDict, Host
 
-LOGIN_ENDPOINT = "/user/login"
-GENIMG_ENDPOINT = "/ai/generate-image"
+HOSTS = DotDict({
+    "API": Host(url="https://api.novelai.net", accept="application/x-zip-compressed"),
+    "WEB": Host(url="https://image.novelai.net", accept="binary/octet-stream"),
+})
+
+ENDPOINTS = DotDict({
+    "LOGIN": "/user/login",
+    "IMAGE": "/ai/generate-image",
+})
+
+MODELS = DotDict({
+    "V3": "nai-diffusion-3",
+    "V3INP": "nai-diffusion-3-inpainting",
+})
 
 HEADERS = {
     "Content-Type": "application/json",

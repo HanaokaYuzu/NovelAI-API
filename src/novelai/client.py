@@ -5,9 +5,10 @@ from typing import Optional
 from httpx import AsyncClient, ReadTimeout
 from loguru import logger
 
-from .consts import API_HOST, WEB_HOST, LOGIN_ENDPOINT, GENIMG_ENDPOINT, HEADERS
-from .types import User, ImageParams, AuthError, APIError, NovelAIError
+from .consts import ENDPOINTS, MODELS, HEADERS, HOSTS
+from .types import User, AuthError, APIError, NovelAIError
 from .utils import encode_access_key, parse_zip, running
+from .image import ImageParams
 
 
 class NAIClient:
@@ -57,7 +58,7 @@ class NAIClient:
         access_key = encode_access_key(self.user)
 
         response = await self.client.post(
-            url=f"{API_HOST}{LOGIN_ENDPOINT}",
+            url=f"{HOSTS.API.url}{ENDPOINTS.LOGIN}",
             json={
                 "key": access_key,
             },
@@ -103,7 +104,7 @@ class NAIClient:
         self.close_task = asyncio.create_task(self.close())
 
     @running
-    async def generate_image(self, prompt: str, host="api", **kwargs) -> dict:
+    async def generate_image(self, prompt: str, host="API", **kwargs) -> dict:
         """
         Send post request to /ai/generate-image endpoint for image generation.
 
@@ -113,7 +114,7 @@ class NAIClient:
             Text prompt to generate image from. Serve as `input` in the request body.
             Refer to https://docs.novelai.net/image/tags.html, https://docs.novelai.net/image/strengthening-weakening.html
         host: `str`, optional
-            Host to send the request. Either "api" or "web", defaults to "api"
+            Host to send the request. Either "API" or "WEB", defaults to "API"
         **kwargs: `Any`, optional
             Refer to `novelai.ImageParams`
 
@@ -122,14 +123,9 @@ class NAIClient:
         `dict`
             Dictionary with file names (`str`) as keys and file contents (`bytes`) as values
         """
-        assert host in (
-            "api",
-            "web",
-        ), "Value of param `host` must be either 'api' or 'web'."
-        HOST = host == "api" and API_HOST or WEB_HOST
-        ACCEPT = (
-            host == "api" and "application/x-zip-compressed" or "binary/octet-stream"
-        )
+        assert host in HOSTS, f"Host must be in {list(HOSTS.keys())}"
+        HOST = HOSTS[host].url
+        ACCEPT = HOSTS[host].accept
 
         params = ImageParams(prompt=prompt, **kwargs)
 
@@ -137,10 +133,10 @@ class NAIClient:
 
         try:
             response = await self.client.post(
-                url=f"{HOST}{GENIMG_ENDPOINT}",
+                url=f"{HOST}{ENDPOINTS.IMAGE}",
                 json={
                     "input": params.prompt,
-                    "model": "nai-diffusion-3",
+                    "model": MODELS.V3,
                     "action": "generate",
                     "parameters": params.serialize(),
                 },
@@ -172,5 +168,5 @@ class NAIClient:
                 )
             case _:
                 raise NovelAIError(
-                    f"An unknown error occured. Message from NovelAI: {response.json().get('message')}"
+                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
                 )
