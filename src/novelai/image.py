@@ -1,6 +1,10 @@
+import math
 import random
+from typing import Literal, Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+from .consts import ACTIONS, SAMPLERS, NOISES
 
 
 class ImageParams(BaseModel):
@@ -60,8 +64,8 @@ class ImageParams(BaseModel):
         Refer to https://docs.novelai.net/image/sampling.html#special-samplers-smea--smea-dyn
     uncond_scale: `float`, optional
         Range: 0-1.5, Undesired content strength, refer to https://docs.novelai.net/image/undesiredcontent.html#undesired-content-strength
-    cfg_rescale: `int`, optional
-        Range: 0-2, Prompt guidance rescale, refer to https://docs.novelai.net/image/stepsguidance.html#prompt-guidance-rescale
+    cfg_rescale: `float`, optional
+        Range: 0-1, Prompt guidance rescale, refer to https://docs.novelai.net/image/stepsguidance.html#prompt-guidance-rescale
     noise_schedule: `str`, optional
         Noise schedule, choose from "native", "karras", "exponential", and "polyexponential"
 
@@ -69,16 +73,16 @@ class ImageParams(BaseModel):
     image: `str`, optional
         Base64-encoded PNG image for Image to Image
     strength: `float`, optional
-        Range: 0.01-0.99, Refer to https://docs.novelai.net/image/strengthnoise.html
+        Range: 0.01-0.99, refer to https://docs.novelai.net/image/strengthnoise.html
     noise: `float`, optional
-        Range: 0-0.99, Refer to https://docs.novelai.net/image/strengthnoise.html
+        Range: 0-0.99, refer to https://docs.novelai.net/image/strengthnoise.html
     controlnet_strength: `float`, optional
-        Controls how much influence the ControlNet has on the image. Defaults to 1
+        Range: 0.1-2, controls how much influence the ControlNet has on the image
     controlnet_condition: `str`, optional
         Base64-encoded PNG ControlNet mask retrieved from the /ai/annotate-image endpoint
     controlnet_model: `str`, optional
-        Model to use for the ControlNet. Palette Swap is "hed", Form Lock is "depth",
-        Scribbler is "scribble", Building Control is "mlsd", is Landscaper is "seg"
+        Control tool to use for the ControlNet. Note: V3 model does not support control tools
+        Palette Swap is "hed", Form Lock is "depth", Scribbler is "scribble", Building Control is "mlsd", is Landscaper is "seg"
 
     | Inpaint
     add_original_image: `bool`, optional
@@ -97,34 +101,42 @@ class ImageParams(BaseModel):
     """
 
     # Prompt
-    prompt: str
+    prompt: str = Field(exclude=True)
     negative_prompt: str = ""
     qualityToggle: bool = True
-    ucPreset: int = 2
+    ucPreset: Literal[0, 1, 2, 3] = 2
 
     # Image settings
-    width: int = 1024
-    height: int = 1024
-    n_samples: int = 1
+    width: int = Field(default=1024, ge=64, le=49152)
+    height: int = Field(default=1024, ge=64, le=49152)
+    n_samples: Annotated[int, Field(ge=1, le=8)] = 1
 
     # AI settings
-    steps: int = 28
-    scale: float = 6
+    steps: int = Field(default=28, ge=1, le=50)
+    scale: float = Field(default=6.0, ge=0, le=10, multiple_of=0.1)
     dynamic_thresholding: bool = False
-    seed: int = random.randint(0, 4294967295 - n_samples + 1)
-    extra_noise_seed: int = random.randint(0, 4294967295 - n_samples + 1)
-    sampler: str = "k_euler"
+    seed: int = Field(
+        default=random.randint(0, 4294967295 - n_samples + 1),
+        gt=0,
+        le=4294967295 - 7,
+    )
+    extra_noise_seed: int = Field(
+        default=random.randint(0, 4294967295 - n_samples + 1),
+        gt=0,
+        le=4294967295 - 7,
+    )
+    sampler: str = SAMPLERS.EULER
     sm: bool = True
     sm_dyn: bool = False
-    uncond_scale: float = 1
-    cfg_rescale: int = 0
-    noise_schedule: str = "native"
+    uncond_scale: float = Field(default=1.0, ge=0, le=1.5, multiple_of=0.05)
+    cfg_rescale: float = Field(default=0, ge=0, le=1, multiple_of=0.02)
+    noise_schedule: str = NOISES.NATIVE
 
     # img2img
     image: str | None = None
-    strength: float | None = 0.3
-    noise: float | None = 0
-    controlnet_strength: float = 1
+    strength: float | None = Field(default=0.3, ge=0.01, le=0.99, multiple_of=0.01)
+    noise: float | None = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
+    controlnet_strength: float = Field(default=1, ge=0.1, le=2, multiple_of=0.1)
     controlnet_condition: str | None = None
     controlnet_model: str | None = None
 
@@ -133,18 +145,38 @@ class ImageParams(BaseModel):
     mask: str | None = None
 
     # Misc
-    params_version: int = 1
+    params_version: Literal[1] = 1
     legacy: bool = False
     legacy_v3_extend: bool = False
+
+    @field_validator("sampler")
+    @classmethod
+    def sampler_validator(cls, v: str) -> str:
+        if v not in SAMPLERS.values():
+            raise ValueError(f"Sampler should be in {list(SAMPLERS.values())}")
+        return v
+
+    @field_validator("noise_schedule")
+    @classmethod
+    def noise_schedule_validator(cls, v: str) -> str:
+        if v not in NOISES.values():
+            raise ValueError(f"Noise schedule should be in {list(NOISES.values())}")
+        return v
 
     def model_post_init(self, *args) -> None:
         """
         Post-initialization hook. Inherit from `pydantic.BaseModel`.
         Implement this method to add custom initialization logic.
         """
+        max_n_samples = self.get_max_n_samples()
+        if max_n_samples < self.n_samples:
+            raise ValueError(
+                f"Max value of n_samples is {max_n_samples} under current resolution ({self.width}x{self.height}). Got {self.n_samples}."
+            )
+
         match self.ucPreset:
             case 0:  # Heavy
-                self.negative_prompt += ", lowres, {bad}, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts, [abstract]"
+                self.negative_prompt += ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
             case 1:  # Light
                 self.negative_prompt += ", lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
             case 2:  # Human Focus
@@ -153,13 +185,60 @@ class ImageParams(BaseModel):
         if self.qualityToggle:
             self.prompt += ", best quality, amazing quality, very aesthetic, absurdres"
 
-    def serialize(self) -> dict:
+    def get_max_n_samples(self) -> int:
         """
-        Convert the ImageParams object to a dictionary.
+        Get the max allowed number of images to generate in a single request by resolution.
 
         Returns
         -------
-        `dict`
-            Dictionary containing the parameters
+        `int`
+            Maximum value of `ImageParams.n_samples`
         """
-        return self.model_dump(exclude=("prompt"), exclude_none=True)
+
+        w, h = self.width, self.height
+
+        if w * h <= 512 * 704:
+            return 8
+
+        if w * h <= 640 * 640:
+            return 6
+
+        if w * h <= 1024 * 3072:
+            return 4
+
+        return 0
+
+    def calculate_cost(self, is_opus: bool = True, action: str = ACTIONS.GENERATE):
+        """
+        Calculate the Anlas cost of current parameters.
+
+        Parameters
+        ----------
+        is_opus: `bool`, optional
+            If the subscription tier is Opus. Opus accounts have access to free generations.
+        action: `str`, optional
+            `action` parameter in the request body. Refer to `novelai.ACTIONS`
+        """
+
+        steps: int = self.steps
+        n_samples: int = self.n_samples
+        uncond_scale: float = self.uncond_scale
+        strength: float = action == ACTIONS.IMG2IMG and self.strength or 1.0
+        resolution = max(self.width * self.height, 65536)
+        smea_factor = self.sm_dyn and 1.4 or self.sm and 1.2 or 1.0
+
+        per_sample = (
+            math.ceil(
+                2951823174884865e-21 * resolution
+                + 5.753298233447344e-7 * resolution * steps
+            )
+            * smea_factor
+        )
+        per_sample = max(math.ceil(per_sample * strength), 2)
+
+        if uncond_scale != 1.0:
+            per_sample = math.ceil(per_sample * 1.3)
+
+        opus_discount = is_opus and steps <= 28 and (resolution <= 1024 * 1024)
+
+        return per_sample * (n_samples - int(opus_discount))

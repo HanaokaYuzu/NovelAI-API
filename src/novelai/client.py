@@ -5,7 +5,7 @@ from typing import Optional
 from httpx import AsyncClient, ReadTimeout
 from loguru import logger
 
-from .consts import ENDPOINTS, MODELS, HEADERS, HOSTS
+from .consts import HOSTS, ENDPOINTS, MODELS, ACTIONS, HEADERS
 from .types import User, AuthError, APIError, NovelAIError
 from .utils import encode_access_key, parse_zip, running
 from .image import ImageParams
@@ -137,8 +137,8 @@ class NAIClient:
                 json={
                     "input": params.prompt,
                     "model": MODELS.V3,
-                    "action": "generate",
-                    "parameters": params.serialize(),
+                    "action": ACTIONS.GENERATE,
+                    "parameters": params.model_dump(exclude_none=True),
                 },
             )
         except ReadTimeout:
