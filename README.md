@@ -1,6 +1,13 @@
 # <img src="https://raw.githubusercontent.com/HanaokaYuzu/NovelAI-API/master/docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
 
-A lightweight asynchronous Python wrapper for NovelAI image generation API. Supports both web and API backend, providing the ability to run two concurrent generating tasks simultaneously.
+A lightweight asynchronous Python wrapper for NovelAI image generation API.
+
+## Features
+
+- **Lightweight** - Focuses on image generation only, providing a simple and easy-to-use interface.
+- **Concurrent** - Supports both API and web backend, allowing to run two generating tasks simultaneously.
+- **Parameterized** - Provides a `Metadata` class to easily set up generation parameters with type validation.
+- **Asynchronous** - Utilizes `asyncio` to run generating tasks and return outputs efficiently.
 
 ## Installation
 
@@ -35,6 +42,8 @@ After initializing successfully, you can generate images with the `generate_imag
 
 By passing `verbose=True`, the method will print the estimated Anlas cost each time a generating request is going to be made.
 
+The full parameter list of `Metadata` can be found in the [class definition](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/metadata.py).
+
 ```python
 from pathlib import Path
 from novelai import Metadata, HOSTS
@@ -48,7 +57,7 @@ async def main():
         n_samples=1,
     )
 
-    print(f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
+    print(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
 
     # Choose host between "HOSTS.API" and "HOSTS.WEB"
     output = await client.generate_image(
@@ -68,9 +77,11 @@ asyncio.run(main())
 
 ### Concurrent Generation
 
-By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **run two concurrent generating tasks at a time** by sending requests to API and web backend respectively.
+By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **simultaneously run two concurrent generating tasks** by sending requests to API and web backend respectively.
 
 Note that API and web backend both have limit on concurrent generation. Therefore, running more than two concurrent tasks will result in a `429 Too Many Requests` error.
+
+[Full usage example](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/docs/concurrent_generation.py) is provided under `/docs`.
 
 ```python
 async def task_api():
@@ -94,8 +105,6 @@ async def main():
 
 asyncio.run(main())
 ```
-
-[Full usage example](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/docs/example.py) is provided under `/docs`.
 
 ### Use in CLI
 
