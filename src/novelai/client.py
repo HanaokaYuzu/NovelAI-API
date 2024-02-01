@@ -3,12 +3,13 @@ from asyncio import Task
 from typing import Optional
 
 from httpx import AsyncClient, ReadTimeout
+from pydantic import validate_call
 from loguru import logger
 
-from .consts import HOSTS, ENDPOINTS, MODELS, ACTIONS, HEADERS
-from .types import User, AuthError, APIError, NovelAIError
+from .consts import HOSTS, ENDPOINTS, HEADERS
+from .types import Host, User, AuthError, APIError, NovelAIError
 from .utils import encode_access_key, parse_zip, running
-from .image import ImageParams
+from .metadata import Metadata
 
 
 class NAIClient:
@@ -22,7 +23,7 @@ class NAIClient:
     password: `str`
         NovelAI password
     timeout: `int`, optional
-        Timeout for the client in seconds
+        Timeout for the client in seconds. Used for limiting the max waiting time of a request
     proxy: `dict`, optional
         Proxy to use for the client
     """
@@ -104,51 +105,64 @@ class NAIClient:
         self.close_task = asyncio.create_task(self.close())
 
     @running
-    async def generate_image(self, prompt: str, host="API", **kwargs) -> dict:
+    @validate_call
+    async def generate_image(
+        self,
+        metadata: Metadata | None = None,
+        host: Host = HOSTS.API,
+        verbose: bool = False,
+        is_opus: bool = False,
+        **kwargs,
+    ) -> dict:
         """
         Send post request to /ai/generate-image endpoint for image generation.
 
         Parameters
         ----------
-        prompt: `str`
-            Text prompt to generate image from. Serve as `input` in the request body.
-            Refer to https://docs.novelai.net/image/tags.html, https://docs.novelai.net/image/strengthening-weakening.html
-        host: `str`, optional
-            Host to send the request. Either "API" or "WEB", defaults to "API"
-        **kwargs: `Any`, optional
-            Refer to `novelai.ImageParams`
+        metadata: `Metadata`
+            Metadata object containing parameters required for image generation
+        host: `Host`, optional
+            Host to send the request. Refer to `novelai.consts.HOSTS` for available hosts or provide a custom host
+        verbose: `bool`, optional
+            If `True`, will log the estimated Anlas cost before sending the request
+        is_opus: `bool`, optional
+            Use with `verbose` to calculate the cost based on your subscription tier
+        **kwargs: `Any`
+            If `metadata` is not provided, these parameters are used to create a `Metadata` object
 
         Returns
         -------
         `dict`
             Dictionary with file names (`str`) as keys and file contents (`bytes`) as values
         """
-        assert host in HOSTS, f"Host must be in {list(HOSTS.keys())}"
-        HOST = HOSTS[host].url
-        ACCEPT = HOSTS[host].accept
+        if metadata is None:
+            metadata = Metadata(**kwargs)
 
-        params = ImageParams(prompt=prompt, **kwargs)
+        if verbose:
+            logger.info(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus)}")
 
         await self.reset_close_task()
 
         try:
             response = await self.client.post(
-                url=f"{HOST}{ENDPOINTS.IMAGE}",
+                url=f"{host.url}{ENDPOINTS.IMAGE}",
                 json={
-                    "input": params.prompt,
-                    "model": MODELS.V3,
-                    "action": ACTIONS.GENERATE,
-                    "parameters": params.model_dump(exclude_none=True),
+                    "input": metadata.prompt,
+                    "model": metadata.model,
+                    "action": metadata.action,
+                    "parameters": metadata.model_dump(exclude_none=True),
                 },
             )
         except ReadTimeout:
-            raise NovelAIError("Request timed out. Please try again.")
+            raise NovelAIError(
+                "Request timed out. Please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
+            )
 
         match response.status_code:
             case 200:
                 assert (
-                    response.headers["Content-Type"] == ACCEPT
-                ), f"Invalid response content type. Expected '{ACCEPT}', got '{response.headers['Content-Type']}'."
+                    response.headers["Content-Type"] == host.accept
+                ), f"Invalid response content type. Expected '{host.accept}', got '{response.headers['Content-Type']}'."
                 return parse_zip(response.content)
             case 400:
                 raise APIError(

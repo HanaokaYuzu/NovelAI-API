@@ -2,12 +2,12 @@ import math
 import random
 from typing import Literal, Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .consts import ACTIONS, SAMPLERS, NOISES
+from .consts import MODELS, ACTIONS, SAMPLERS, NOISES
 
 
-class ImageParams(BaseModel):
+class Metadata(BaseModel):
     """
     Serve as `input` and `parameters` in the request body of the /ai/generate-image endpoint.
 
@@ -17,10 +17,18 @@ class ImageParams(BaseModel):
 
     Parameters
     ----------
-    | Prompt
+    | General
     prompt: `str`
         Text prompt to generate image from. Serve as `input` in the request body.
         Refer to https://docs.novelai.net/image/tags.html, https://docs.novelai.net/image/strengthening-weakening.html
+    model: `str`, optional
+        Model to use for the generation. Serve as `model` in the request body. Refer to `novelai.consts.MODELS`
+    action: `str`, optional
+        Action to perform. Serve as `action` in the request body. Refer to `novelai.consts.ACTIONS`
+
+    | Note: all fields below that are not in "General" section will together serve as `parameters` in the request body
+
+    | Prompt
     negative_prompt: `str`, optional
         Refer to https://docs.novelai.net/image/undesiredcontent.html
     qualityToggle: `bool`, optional
@@ -100,15 +108,20 @@ class ImageParams(BaseModel):
         Defaults to False
     """
 
-    # Prompt
+    # General
+    # Fields in this section will be excluded from the output of model_dump during serialization
     prompt: str = Field(exclude=True)
+    model: str = Field(default=MODELS.V3, exclude=True)
+    action: str = Field(default=ACTIONS.GENERATE, exclude=True)
+
+    # Prompt
     negative_prompt: str = ""
     qualityToggle: bool = True
     ucPreset: Literal[0, 1, 2, 3] = 2
 
     # Image settings
-    width: int = Field(default=1024, ge=64, le=49152)
-    height: int = Field(default=1024, ge=64, le=49152)
+    width: Annotated[int, Field(ge=64, le=49152)] = 1024
+    height: Annotated[int, Field(ge=64, le=49152)] = 1024
     n_samples: Annotated[int, Field(ge=1, le=8)] = 1
 
     # AI settings
@@ -149,30 +162,48 @@ class ImageParams(BaseModel):
     legacy: bool = False
     legacy_v3_extend: bool = False
 
+    @field_validator("model")
+    @classmethod
+    def __model_validator(cls, v: str) -> str:
+        if v not in MODELS.values():
+            raise ValueError(f"Model should be in {list(MODELS.values())}")
+        return v
+
+    @field_validator("action")
+    @classmethod
+    def __action_validator(cls, v: str) -> str:
+        if v not in ACTIONS.values():
+            raise ValueError(f"Action should be in {list(ACTIONS.values())}")
+        return v
+
     @field_validator("sampler")
     @classmethod
-    def sampler_validator(cls, v: str) -> str:
+    def __sampler_validator(cls, v: str) -> str:
         if v not in SAMPLERS.values():
             raise ValueError(f"Sampler should be in {list(SAMPLERS.values())}")
         return v
 
     @field_validator("noise_schedule")
     @classmethod
-    def noise_schedule_validator(cls, v: str) -> str:
+    def __noise_schedule_validator(cls, v: str) -> str:
         if v not in NOISES.values():
             raise ValueError(f"Noise schedule should be in {list(NOISES.values())}")
         return v
+
+    @model_validator(mode="after")
+    def __n_samples_validator(self) -> "Metadata":
+        max_n_samples = self.get_max_n_samples()
+        if self.n_samples > max_n_samples:
+            raise ValueError(
+                f"Max value of n_samples is {max_n_samples} under current resolution ({self.width}x{self.height}). Got {self.n_samples}."
+            )
+        return self
 
     def model_post_init(self, *args) -> None:
         """
         Post-initialization hook. Inherit from `pydantic.BaseModel`.
         Implement this method to add custom initialization logic.
         """
-        max_n_samples = self.get_max_n_samples()
-        if max_n_samples < self.n_samples:
-            raise ValueError(
-                f"Max value of n_samples is {max_n_samples} under current resolution ({self.width}x{self.height}). Got {self.n_samples}."
-            )
 
         match self.ucPreset:
             case 0:  # Heavy
@@ -208,7 +239,7 @@ class ImageParams(BaseModel):
 
         return 0
 
-    def calculate_cost(self, is_opus: bool = True, action: str = ACTIONS.GENERATE):
+    def calculate_cost(self, is_opus: bool = False):
         """
         Calculate the Anlas cost of current parameters.
 
@@ -216,14 +247,12 @@ class ImageParams(BaseModel):
         ----------
         is_opus: `bool`, optional
             If the subscription tier is Opus. Opus accounts have access to free generations.
-        action: `str`, optional
-            `action` parameter in the request body. Refer to `novelai.ACTIONS`
         """
 
         steps: int = self.steps
         n_samples: int = self.n_samples
         uncond_scale: float = self.uncond_scale
-        strength: float = action == ACTIONS.IMG2IMG and self.strength or 1.0
+        strength: float = self.action == ACTIONS.IMG2IMG and self.strength or 1.0
         resolution = max(self.width * self.height, 65536)
         smea_factor = self.sm_dyn and 1.4 or self.sm and 1.2 or 1.0
 
