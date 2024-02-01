@@ -187,6 +187,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Test files
-*test*.*
-output/
+# Temporary files
+temp/
