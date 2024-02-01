@@ -129,12 +129,12 @@ class Metadata(BaseModel):
     scale: float = Field(default=6.0, ge=0, le=10, multiple_of=0.1)
     dynamic_thresholding: bool = False
     seed: int = Field(
-        default=random.randint(0, 4294967295 - n_samples + 1),
+        default_factory=lambda: random.randint(0, 4294967295 - 7),
         gt=0,
         le=4294967295 - 7,
     )
     extra_noise_seed: int = Field(
-        default=random.randint(0, 4294967295 - n_samples + 1),
+        default_factory=lambda: random.randint(0, 4294967295 - 7),
         gt=0,
         le=4294967295 - 7,
     )

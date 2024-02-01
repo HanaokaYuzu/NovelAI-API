@@ -139,7 +139,7 @@ class NAIClient:
             metadata = Metadata(**kwargs)
 
         if verbose:
-            logger.info(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus)}")
+            logger.info(f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus)}")
 
         await self.reset_close_task()
 

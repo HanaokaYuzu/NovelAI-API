@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/HanaokaYuzu/NovelAI-API/master/docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
 
-A lightweight asynchronous Python wrapper for NovelAI image generation API. Supports both web and api backend.
+A lightweight asynchronous Python wrapper for NovelAI image generation API. Supports both web and API backend, providing the ability to run two concurrent generating tasks simultaneously.
 
 ## Installation
 
@@ -12,6 +12,8 @@ pip install novelai
 
 ### Initialization
 
+Import required packages and initialize a client with your NovelAI account credentials.
+
 ```python
 import asyncio
 from novelai import NAIClient
@@ -21,29 +23,79 @@ username = "Your NovelAI username"
 password = "Your NovelAI password"
 
 async def main():
-    client = NAIClient(username, password, proxy=None)
+    client = NAIClient(username, password, timeout=60, proxy=None)
     await client.init()
 
 asyncio.run(main())
 ```
 
-### Generate
+### Image Generation
+
+After initializing successfully, you can generate images with the `generate_image` method. The method takes a `Metadata` object as the first argument, and an optional `host` argument to specify the backend to use.
+
+By passing `verbose=True`, the method will print the estimated Anlas cost each time a generating request is going to be made.
 
 ```python
 from pathlib import Path
+from novelai import Metadata, HOSTS
 
 async def main():
-    # Choose host between "api" and "web"
-    output = await client.generate_image(prompt="1girl", host="api")
+    metadata = Metadata(
+        prompt="1girl",
+        negative_prompt="bad anatomy",
+        width=832,
+        height=1216,
+        n_samples=1,
+    )
 
-    path = Path("output")
+    print(f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
+
+    # Choose host between "HOSTS.API" and "HOSTS.WEB"
+    output = await client.generate_image(
+        metadata, host=HOSTS.WEB, verbose=False, is_opus=False
+    )
+
+    path = Path("./temp")
     path.mkdir(parents=True, exist_ok=True)
 
     for filename, data in output.items():
-        Path(path / filename).write_bytes(data)
+        dest = Path(path / filename)
+        dest.write_bytes(data)
+        print(f"Image saved as {dest.resolve()}")
 
 asyncio.run(main())
 ```
+
+### Concurrent Generation
+
+By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **run two concurrent generating tasks at a time** by sending requests to API and web backend respectively.
+
+Note that API and web backend both have limit on concurrent generation. Therefore, running more than two concurrent tasks will result in a `429 Too Many Requests` error.
+
+```python
+async def task_api():
+    await client.generate_image(
+        metadata, host=HOSTS.API
+    )
+    print("API task completed")
+
+async def task_web():
+    await client.generate_image(
+        metadata, host=HOSTS.WEB
+    )
+    print("Web task completed")
+
+async def main():
+    tasks = [
+        asyncio.create_task(task_api()),
+        asyncio.create_task(task_web()),
+    ]
+    await asyncio.wait(tasks)
+
+asyncio.run(main())
+```
+
+[Full usage example](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/docs/example.py) is provided under `/docs`.
 
 ### Use in CLI
 
