@@ -43,6 +43,8 @@ class TestNAIClient(unittest.IsolatedAsyncioTestCase):
                 model=MODELS.V3,
                 action=ACTIONS.GENERATE,
                 qualityToggle=False,
+                seed=1,
+                extra_noise_seed=2,
             )
         )
         self.assertEqual(result, parse_zip(self.zipdata))
@@ -55,7 +57,10 @@ class TestNAIClient(unittest.IsolatedAsyncioTestCase):
                 "model": MODELS.V3,
                 "action": ACTIONS.GENERATE,
                 "parameters": Metadata(
-                    prompt="test_prompt", qualityToggle=False
+                    prompt="test_prompt",
+                    qualityToggle=False,
+                    seed=1,
+                    extra_noise_seed=2,
                 ).model_dump(exclude_none=True),
             },
         )

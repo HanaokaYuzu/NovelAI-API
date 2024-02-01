@@ -85,15 +85,11 @@ Note that API and web backend both have limit on concurrent generation. Therefor
 
 ```python
 async def task_api():
-    await client.generate_image(
-        metadata, host=HOSTS.API
-    )
+    await client.generate_image(metadata, host=HOSTS.API)
     print("API task completed")
 
 async def task_web():
-    await client.generate_image(
-        metadata, host=HOSTS.WEB
-    )
+    await client.generate_image(metadata, host=HOSTS.WEB)
     print("Web task completed")
 
 async def main():

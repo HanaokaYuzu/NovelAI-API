@@ -109,11 +109,12 @@ class NAIClient:
     async def generate_image(
         self,
         metadata: Metadata | None = None,
-        host: Host = HOSTS.API,
+        host: Host = HOSTS.WEB,
         verbose: bool = False,
         is_opus: bool = False,
+        auto_close: bool = False,
         **kwargs,
-    ) -> dict:
+    ) -> dict[str, bytes]:
         """
         Send post request to /ai/generate-image endpoint for image generation.
 
@@ -127,6 +128,9 @@ class NAIClient:
             If `True`, will log the estimated Anlas cost before sending the request
         is_opus: `bool`, optional
             Use with `verbose` to calculate the cost based on your subscription tier
+        auto_close: `bool`, optional
+            If `True`, the client will close connections and clear resource usage
+            after a certain period of inactivity. Useful for keep-alive services
         **kwargs: `Any`
             If `metadata` is not provided, these parameters are used to create a `Metadata` object
 
@@ -141,7 +145,8 @@ class NAIClient:
         if verbose:
             logger.info(f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus)}")
 
-        await self.reset_close_task()
+        if auto_close:
+            await self.reset_close_task()
 
         try:
             response = await self.client.post(
@@ -155,7 +160,7 @@ class NAIClient:
             )
         except ReadTimeout:
             raise NovelAIError(
-                "Request timed out. Please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
+                "Request timed out, please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
             )
 
         match response.status_code:
