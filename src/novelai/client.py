@@ -1,6 +1,5 @@
 import asyncio
 from asyncio import Task
-from typing import Optional
 
 from httpx import AsyncClient, ReadTimeout
 from pydantic import validate_call
@@ -8,8 +7,28 @@ from loguru import logger
 
 from .consts import HOSTS, ENDPOINTS, HEADERS
 from .types import Host, User, AuthError, APIError, NovelAIError
-from .utils import encode_access_key, parse_zip, running
+from .utils import encode_access_key, parse_zip
 from .metadata import Metadata
+
+
+def running(func) -> callable:
+    """
+    Decorator to check if client is running before making a request.
+    """
+
+    async def wrapper(self: "NAIClient", *args, **kwargs):
+        if not self.running:
+            await self.init(auto_close=self.auto_close, close_delay=self.close_delay)
+            if self.running:
+                return await func(self, *args, **kwargs)
+
+            raise Exception(
+                f"Invalid function call: NAIClient.{func.__name__}. Client initialization failed."
+            )
+        else:
+            return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class NAIClient:
@@ -22,30 +41,90 @@ class NAIClient:
         NovelAI username, usually an email address
     password: `str`
         NovelAI password
-    timeout: `int`, optional
-        Timeout for the client in seconds. Used for limiting the max waiting time of a request
     proxy: `dict`, optional
         Proxy to use for the client
     """
 
-    __slots__ = ["user", "running", "access_token", "close_task", "client"]
+    __slots__ = [
+        "user",
+        "proxy",
+        "client",
+        "running",
+        "auto_close",
+        "close_delay",
+        "close_task",
+    ]
 
     def __init__(
         self,
         username: str,
         password: str,
-        timeout: int = 30,
-        proxy: Optional[dict] = None,
+        proxy: dict | None = None,
     ):
         self.user = User(username=username, password=password)
+        self.proxy = proxy
+        self.client: AsyncClient | None = None
         self.running: bool = False
-        self.access_token: Optional[str] = None
-        self.close_task: Optional[Task] = None
-        self.client: AsyncClient = AsyncClient(
-            timeout=timeout,
-            proxies=proxy,
-            headers=HEADERS,
-        )
+        self.auto_close: bool = False
+        self.close_delay: int = 0
+        self.close_task: Task | None = None
+
+    async def init(
+        self, timeout: int = 30, auto_close: bool = False, close_delay: int = 300
+    ) -> None:
+        """
+        Get access token and implement Authorization header.
+
+        Parameters
+        ----------
+        timeout: `int`, optional
+            Request timeout of the client in seconds. Used to limit the max waiting time when sending a request
+        auto_close: `bool`, optional
+            If `True`, the client will close connections and clear resource usage after a certain period
+            of inactivity. Useful for keep-alive services
+        close_delay: `int`, optional
+            Time to wait before auto-closing the client in seconds. Effective only if `auto_close` is `True`
+        """
+        try:
+            self.client = AsyncClient(
+                timeout=timeout, proxies=self.proxy, headers=HEADERS
+            )
+            self.client.headers["Authorization"] = (
+                f"Bearer {await self.get_access_token()}"
+            )
+
+            self.running = True
+            logger.success("NovelAI client initialized successfully.")
+
+            self.auto_close = auto_close
+            self.close_delay = close_delay
+            if self.auto_close:
+                await self.reset_close_task()
+        except Exception:
+            await self.close(0)
+            raise
+
+    async def close(self, wait: int) -> None:
+        """
+        Close the client after a certain period of inactivity, or call manually to close immediately.
+
+        Parameters
+        ----------
+        wait: `int`, optional
+            Time to wait before closing the client in seconds
+        """
+        await asyncio.sleep(wait is not None and wait or self.close_delay)
+        await self.client.aclose()
+        self.running = False
+
+    async def reset_close_task(self) -> None:
+        """
+        Reset the timer for closing the client when a new request is made.
+        """
+        if self.close_task:
+            self.close_task.cancel()
+            self.close_task = None
+        self.close_task = asyncio.create_task(self.close())
 
     async def get_access_token(self) -> str:
         """
@@ -73,46 +152,18 @@ class NAIClient:
             case 401:
                 raise AuthError("Invalid username or password.")
             case _:
-                raise NovelAIError("An unknown error occured.")
-
-    async def init(self) -> None:
-        """
-        Get access token and implement Authorization header.
-        """
-        try:
-            self.access_token = await self.get_access_token()
-            self.client.headers["Authorization"] = f"Bearer {self.access_token}"
-            self.running = True
-            logger.success("NovelAI client initialized successfully.")
-        except Exception as e:
-            await self.client.aclose()
-            logger.error(f"Failed to initiate client. {type(e).__name__}: {e}")
-
-    async def close(self, timeout=300) -> None:
-        """
-        Close the client after a certain period of inactivity, or call manually to close immediately.
-        """
-        await asyncio.sleep(timeout)
-        await self.client.aclose()
-
-    async def reset_close_task(self) -> None:
-        """
-        Reset the timer for closing the client when a new request is made.
-        """
-        if self.close_task:
-            self.close_task.cancel()
-            self.close_task = None
-        self.close_task = asyncio.create_task(self.close())
+                raise NovelAIError(
+                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
+                )
 
     @running
     @validate_call
     async def generate_image(
         self,
         metadata: Metadata | None = None,
-        host: Host = HOSTS.WEB,
+        host: Host = HOSTS.API,
         verbose: bool = False,
         is_opus: bool = False,
-        auto_close: bool = False,
         **kwargs,
     ) -> dict[str, bytes]:
         """
@@ -128,9 +179,6 @@ class NAIClient:
             If `True`, will log the estimated Anlas cost before sending the request
         is_opus: `bool`, optional
             Use with `verbose` to calculate the cost based on your subscription tier
-        auto_close: `bool`, optional
-            If `True`, the client will close connections and clear resource usage
-            after a certain period of inactivity. Useful for keep-alive services
         **kwargs: `Any`
             If `metadata` is not provided, these parameters are used to create a `Metadata` object
 
@@ -143,9 +191,11 @@ class NAIClient:
             metadata = Metadata(**kwargs)
 
         if verbose:
-            logger.info(f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus)}")
+            logger.info(
+                f"Generating image... estimated Anlas cost: {metadata.calculate_cost(is_opus)}"
+            )
 
-        if auto_close:
+        if self.auto_close:
             await self.reset_close_task()
 
         try:
@@ -174,16 +224,22 @@ class NAIClient:
                     f"A validation error occured. Message from NovelAI: {response.json().get('message')}"
                 )
             case 401:
+                self.running = False
                 raise AuthError(
                     f"Access token is incorrect. Message from NovelAI: {response.json().get('message')}"
                 )
             case 402:
+                self.running = False
                 raise AuthError(
                     f"An active subscription is required to access this endpoint. Message from NovelAI: {response.json().get('message')}"
                 )
             case 409:
                 raise APIError(
                     f"A conflict error occured. Message from NovelAI: {response.json().get('message')}"
+                )
+            case 429:
+                raise NovelAIError(
+                    f"A concurrent error occured. Message from NovelAI: {response.json().get('message')}"
                 )
             case _:
                 raise NovelAIError(

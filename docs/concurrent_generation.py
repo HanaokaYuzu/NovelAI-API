@@ -8,7 +8,7 @@ from novelai import NAIClient, Metadata, HOSTS
 
 
 client = NAIClient(
-    username=os.getenv("USERNAME"), password=os.getenv("PASSWORD"), timeout=30
+    username=os.getenv("USERNAME"), password=os.getenv("PASSWORD")
 )
 
 path = Path("./temp")
@@ -61,7 +61,7 @@ async def task_web():
 
 @logger.catch
 async def main():
-    await client.init()
+    await client.init(timeout=45)
     tasks = [
         asyncio.create_task(task_api()),
         asyncio.create_task(task_web()),

@@ -30,8 +30,8 @@ username = "Your NovelAI username"
 password = "Your NovelAI password"
 
 async def main():
-    client = NAIClient(username, password, timeout=60, proxy=None)
-    await client.init()
+    client = NAIClient(username, password, proxy=None)
+    await client.init(timeout=30)
 
 asyncio.run(main())
 ```
