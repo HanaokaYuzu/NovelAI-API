@@ -4,7 +4,7 @@ from typing import Literal, Annotated
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .consts import MODELS, ACTIONS, SAMPLERS, NOISES
+from .consts import MODELS, ACTIONS, SAMPLERS, NOISES, RESOLUTIONS
 
 
 class Metadata(BaseModel):
@@ -253,8 +253,14 @@ class Metadata(BaseModel):
         n_samples: int = self.n_samples
         uncond_scale: float = self.uncond_scale
         strength: float = self.action == ACTIONS.IMG2IMG and self.strength or 1.0
-        resolution = max(self.width * self.height, 65536)
         smea_factor = self.sm_dyn and 1.4 or self.sm and 1.2 or 1.0
+        resolution = max(self.width * self.height, 65536)
+
+        # For normal resolutions, squre is adjusted to the same price as portrait/landscape
+        if resolution > math.prod(
+            RESOLUTIONS.NORMAL_PORTRAIT
+        ) and resolution <= math.prod(RESOLUTIONS.NORMAL_SQUARE):
+            resolution = math.prod(RESOLUTIONS.NORMAL_PORTRAIT)
 
         per_sample = (
             math.ceil(
@@ -268,6 +274,10 @@ class Metadata(BaseModel):
         if uncond_scale != 1.0:
             per_sample = math.ceil(per_sample * 1.3)
 
-        opus_discount = is_opus and steps <= 28 and (resolution <= 1024 * 1024)
+        opus_discount = (
+            is_opus
+            and steps <= 28
+            and (resolution <= math.prod(RESOLUTIONS.NORMAL_SQUARE))
+        )
 
         return per_sample * (n_samples - int(opus_discount))

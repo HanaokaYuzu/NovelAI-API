@@ -70,7 +70,7 @@ class NAIClient:
         self.close_task: Task | None = None
 
     async def init(
-        self, timeout: int = 30, auto_close: bool = False, close_delay: int = 300
+        self, timeout: float = 30, auto_close: bool = False, close_delay: int = 300
     ) -> None:
         """
         Get access token and implement Authorization header.
@@ -104,7 +104,7 @@ class NAIClient:
             await self.close(0)
             raise
 
-    async def close(self, wait: int) -> None:
+    async def close(self, wait: int | None = None) -> None:
         """
         Close the client after a certain period of inactivity, or call manually to close immediately.
 

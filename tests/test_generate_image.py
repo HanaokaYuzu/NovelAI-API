@@ -15,15 +15,17 @@ from novelai import (
     ENDPOINTS,
 )
 from novelai.utils import parse_zip
+from httpx import AsyncClient
 
 
-class TestNAIClient(unittest.IsolatedAsyncioTestCase):
+class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.username = "test_username"
         self.password = "test_password"
         self.zipdata = b"PK\x05\x06" + b"\x00" * 18
         self.user = User(username=self.username, password=self.password)
         self.naiclient = NAIClient(self.username, self.password)
+        self.naiclient.client = AsyncClient()
         self.naiclient.running = True
 
     async def test_generate_image(self):
@@ -67,11 +69,12 @@ class TestNAIClient(unittest.IsolatedAsyncioTestCase):
 
     def test_generate_image_error(self):
         # Test the error cases
-        error_codes = [400, 401, 402, 409, 500]
-        error_exceptions = [APIError, AuthError, AuthError, APIError, NovelAIError]
+        error_codes = [400, 401, 402, 409, 429, 500]
+        error_exceptions = [APIError, AuthError, AuthError, APIError, NovelAIError, NovelAIError]
 
         for code, exception in zip(error_codes, error_exceptions):
             with self.subTest(code=code):
+                self.naiclient.running = True
                 # Mock the AsyncClient's post method to return an error code
                 self.naiclient.client.post = AsyncMock(
                     return_value=MagicMock(status_code=code)

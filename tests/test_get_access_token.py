@@ -12,6 +12,7 @@ from novelai import (
     ENDPOINTS,
 )
 from novelai.utils import encode_access_key
+from httpx import AsyncClient
 
 
 class TestNAIClient(unittest.IsolatedAsyncioTestCase):
@@ -20,6 +21,7 @@ class TestNAIClient(unittest.IsolatedAsyncioTestCase):
         self.password = "test_password"
         self.user = User(username=self.username, password=self.password)
         self.naiclient = NAIClient(self.username, self.password)
+        self.naiclient.client = AsyncClient()
 
     async def test_get_access_token(self):
         # Mock the AsyncClient's post method
