@@ -12,6 +12,7 @@ HOSTS = DotDict(
 ENDPOINTS = DotDict(
     {
         "LOGIN": "/user/login",
+        "USERDATA": "/user/data",
         "IMAGE": "/ai/generate-image",
     }
 )
