@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Literal, Annotated
+from typing import Literal, Annotated, override
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -199,6 +199,7 @@ class Metadata(BaseModel):
             )
         return self
 
+    @override
     def model_post_init(self, *args) -> None:
         """
         Post-initialization hook. Inherit from `pydantic.BaseModel`.
