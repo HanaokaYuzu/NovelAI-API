@@ -10,6 +10,8 @@ from novelai import (
     APIError,
     AuthError,
     NovelAIError,
+    ConcurrentError,
+    TimeoutError,
     Metadata,
     HEADERS,
     HOSTS,
@@ -37,7 +39,7 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
                         self.metadata, host=HOSTS.API
                     )
                     self.assertTrue("image_0.png" in output)
-                except NovelAIError:
+                except TimeoutError:
                     self.skipTest("task_api timed out")
 
         async def task_web():
@@ -47,7 +49,7 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
                         self.metadata, host=HOSTS.WEB
                     )
                     self.assertTrue("image_0.png" in output)
-                except NovelAIError:
+                except TimeoutError:
                     self.skipTest("task_web skipped")
 
         tasks = [
@@ -63,8 +65,8 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             APIError,
             AuthError,
             AuthError,
-            APIError,
             NovelAIError,
+            ConcurrentError,
             NovelAIError,
         ]
 

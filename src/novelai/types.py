@@ -61,3 +61,19 @@ class NovelAIError(Exception):
     """
 
     pass
+
+
+class TimeoutError(NovelAIError):
+    """
+    Exception for request timeouts.
+    """
+
+    pass
+
+
+class ConcurrentError(NovelAIError):
+    """
+    Exception for concurrent request errors.
+    """
+
+    pass
