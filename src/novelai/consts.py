@@ -19,8 +19,24 @@ ENDPOINTS = DotDict(
 
 MODELS = DotDict(
     {
+        # Anime v3
         "V3": "nai-diffusion-3",
         "V3INP": "nai-diffusion-3-inpainting",
+        # Furry model beta v1.3
+        # Note that prompt preset in Metadata added by qualityToggle and ucPreset could be different,
+        # but this module will not be specially adapted for it until a stable version is released.
+        "FURRY": "nai-diffusion-furry",
+        "FURRYINP": "furry-diffusion-inpainting",
+    }
+)
+
+CONTROLNETS = DotDict(
+    {
+        "PALETTESWAP": "hed",
+        "FORMLOCK": "midas",
+        "SCRIBBLER": "fake_scribble",
+        "BUILDINGCONTROL": "mlsd",
+        "LANDSCAPER": "uniformer",
     }
 )
 
