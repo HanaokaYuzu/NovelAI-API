@@ -5,10 +5,18 @@ from httpx import AsyncClient, ReadTimeout
 from pydantic import validate_call
 from loguru import logger
 
-from .consts import HOSTS, ENDPOINTS, HEADERS
-from .types import Host, User, AuthError, APIError, NovelAIError
-from .utils import encode_access_key, parse_zip
 from .metadata import Metadata
+from .utils import encode_access_key, parse_zip
+from .consts import HOSTS, ENDPOINTS, HEADERS
+from .types import (
+    Host,
+    User,
+    AuthError,
+    APIError,
+    NovelAIError,
+    TimeoutError,
+    ConcurrentError,
+)
 
 
 def running(func) -> callable:
@@ -208,7 +216,7 @@ class NAIClient:
                 },
             )
         except ReadTimeout:
-            raise NovelAIError(
+            raise TimeoutError(
                 "Request timed out, please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
             )
 
@@ -232,11 +240,11 @@ class NAIClient:
                 f"An active subscription is required to access this endpoint. Message from NovelAI: {response.json().get('message')}"
             )
         elif response.status_code == 409:
-            raise APIError(
+            raise NovelAIError(
                 f"A conflict error occured. Message from NovelAI: {response.json().get('message')}"
             )
         elif response.status_code == 429:
-            raise NovelAIError(
+            raise ConcurrentError(
                 f"A concurrent error occured. Message from NovelAI: {response.json().get('message')}"
             )
         else:
