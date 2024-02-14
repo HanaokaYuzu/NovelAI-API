@@ -152,17 +152,16 @@ class NAIClient:
             },
         )
 
-        match response.status_code:
-            case 201:
-                return response.json()["accessToken"]
-            case 400:
-                raise APIError("A validation error occured.")
-            case 401:
-                raise AuthError("Invalid username or password.")
-            case _:
-                raise NovelAIError(
-                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
-                )
+        if response.status_code == 201:
+            return response.json()["accessToken"]
+        elif response.status_code == 400:
+            raise APIError("A validation error occured.")
+        elif response.status_code == 401:
+            raise AuthError("Invalid username or password.")
+        else:
+            raise NovelAIError(
+                f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
+            )
 
     @running
     @validate_call
@@ -221,35 +220,34 @@ class NAIClient:
                 "Request timed out, please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
             )
 
-        match response.status_code:
-            case 200:
-                assert (
-                    response.headers["Content-Type"] == host.accept
-                ), f"Invalid response content type. Expected '{host.accept}', got '{response.headers['Content-Type']}'."
-                return parse_zip(response.content)
-            case 400:
-                raise APIError(
-                    f"A validation error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 401:
-                self.running = False
-                raise AuthError(
-                    f"Access token is incorrect. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 402:
-                self.running = False
-                raise AuthError(
-                    f"An active subscription is required to access this endpoint. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 409:
-                raise NovelAIError(
-                    f"A conflict error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 429:
-                raise ConcurrentError(
-                    f"A concurrent error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case _:
-                raise NovelAIError(
-                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
-                )
+        if response.status_code == 200:
+            assert (
+                response.headers["Content-Type"] == host.accept
+            ), f"Invalid response content type. Expected '{host.accept}', got '{response.headers['Content-Type']}'."
+            return parse_zip(response.content)
+        elif response.status_code == 400:
+            raise APIError(
+                f"A validation error occured. Message from NovelAI: {response.json().get('message')}"
+            )
+        elif response.status_code == 401:
+            self.running = False
+            raise AuthError(
+                f"Access token is incorrect. Message from NovelAI: {response.json().get('message')}"
+            )
+        elif response.status_code == 402:
+            self.running = False
+            raise AuthError(
+                f"An active subscription is required to access this endpoint. Message from NovelAI: {response.json().get('message')}"
+            )
+        elif response.status_code == 409:
+            raise NovelAIError(
+                f"A conflict error occured. Message from NovelAI: {response.json().get('message')}"
+            )
+        elif response.status_code == 429:
+            raise ConcurrentError(
+                f"A concurrent error occured. Message from NovelAI: {response.json().get('message')}"
+            )
+        else:
+            raise NovelAIError(
+                f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
+            )

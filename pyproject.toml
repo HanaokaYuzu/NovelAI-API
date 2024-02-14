@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "novelai"
+name = "novelai-legacy"
 authors = [
     {name = "UZQueen"},
 ]
@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.7"
 dependencies = [
     "httpx>=0.25.2",
     "pydantic>=2.5.3",
