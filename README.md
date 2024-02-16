@@ -46,7 +46,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### Image Generation (text2img)
+### Image Generation
 
 After initializing successfully, you can generate images with the `generate_image` method. The method takes a `Metadata` object as the first argument, and an optional `host` argument to specify the backend to use.
 
@@ -116,6 +116,34 @@ async def main():
     output = await client.generate_image(
         metadata, host=HOSTS.WEB, verbose=False, is_opus=False
     )
+
+asyncio.run(main())
+```
+
+
+### Concurrent Generation
+
+By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **simultaneously run two concurrent generating tasks** by sending requests to API and web backend respectively.
+
+Note that API and web backend both have limit on concurrent generation. Therefore, running more than two concurrent tasks will result in a `429 Too Many Requests` error.
+
+[Full usage example](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/docs/concurrent_generation.py) is provided under `/docs`.
+
+```python
+async def task_api():
+    await client.generate_image(metadata, host=HOSTS.API)
+    print("API task completed")
+
+async def task_web():
+    await client.generate_image(metadata, host=HOSTS.WEB)
+    print("Web task completed")
+
+async def main():
+    tasks = [
+        asyncio.create_task(task_api()),
+        asyncio.create_task(task_web()),
+    ]
+    await asyncio.wait(tasks)
 
 asyncio.run(main())
 ```
