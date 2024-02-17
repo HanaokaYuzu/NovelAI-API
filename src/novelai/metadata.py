@@ -67,8 +67,9 @@ class Metadata(BaseModel):
         "k_dpmpp_2s_ancestral", "k_dpmpp_sde", "k_dpm_2", "k_dpm_2_ancestral", "k_dpm_adaptive", "k_dpm_fast"
     sm: `bool`, optional
         Whether to enable SMEA. Refer to https://docs.novelai.net/image/sampling.html#special-samplers-smea--smea-dyn
+        Must set false when inpainting. For img2img, setting to true will not cause error but generated image will be blurry
     sm_dyn: `bool`, optional
-        Whether to enable SMEA DYN (SMEA needs to be enabled for SMEA DYN)
+        Whether to enable SMEA DYN (SMEA needs to be enabled to enable SMEA DYN).
         Refer to https://docs.novelai.net/image/sampling.html#special-samplers-smea--smea-dyn
     uncond_scale: `float`, optional
         Range: 0-1.5, Undesired content strength, refer to https://docs.novelai.net/image/undesiredcontent.html#undesired-content-strength
@@ -79,7 +80,7 @@ class Metadata(BaseModel):
 
     | img2img
     image: `str`, optional
-        Base64-encoded PNG image for Image to Image
+        Base64-encoded image for Image to Image
     strength: `float`, optional
         Range: 0.01-0.99, refer to https://docs.novelai.net/image/strengthnoise.html
     noise: `float`, optional
@@ -96,7 +97,7 @@ class Metadata(BaseModel):
     add_original_image: `bool`, optional
         Refer to https://docs.novelai.net/image/inpaint.html#overlay-original-image
     mask: `str`, optional
-        Base64-encoded black and white PNG image to use as a mask for inpainting
+        Base64-encoded black and white image to use as a mask for inpainting
         White is the area to inpaint and black is the rest
 
     | Misc
@@ -216,6 +217,11 @@ class Metadata(BaseModel):
 
         if self.qualityToggle:
             self.prompt += ", best quality, amazing quality, very aesthetic, absurdres"
+
+        # Disable SMEA and SMEA DYN for img2img/inpaint
+        if self.action == ACTIONS.IMG2IMG or self.action == ACTIONS.INPAINT:
+            self.sm = False
+            self.sm_dyn = False
 
     def get_max_n_samples(self) -> int:
         """

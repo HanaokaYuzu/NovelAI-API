@@ -85,41 +85,69 @@ async def main():
 asyncio.run(main())
 ```
 
-### Image Generation (img2img)
+### Image to Image
 
-To use the `img2img` generation, the base image must first be converted into a Base64-encoded format. This can be achieved in Python using the base64 module. Below is a simple example of how to perform img2img generation.
-
-The Metadata class, which contains all parameters related to the img2img feature, is thoroughly documented in its [class definition](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/metadata.py).
+To perform `img2img` action, set `action` parameter in Metadata to `ACTIONS.IMG2IMG`, and `image` parameter to your base image. The base image  needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
 
 ```python
+import base64
 from pathlib import Path
-from novelai import Metadata, HOSTS, ACTIONS
+from novelai import Metadata, HOSTS, ACTIONS, RESOLUTIONS
 
 async def main():
+    with open("tests/images/portrait.jpg", "rb") as f:
+        base_image = base64.b64encode(f.read()).decode("utf-8")
+
     metadata = Metadata(
         prompt="1girl",
         negative_prompt="bad anatomy",
-        width=832,
-        height=1216,
-        n_samples=1,
         action=ACTIONS.IMG2IMG,
-    )
-
-    print(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
-
-    d = Path(".")
-    metadata.image = base64.b64encode((d / "base.png").read_bytes()).decode(
-        "utf-8"
+        width=RESOLUTIONS.NORMAL_PORTRAIT[0],
+        height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+        n_samples=1,
+        image=base_image,
+        strength=0.5,
+        noise=0.1,
     )
 
     # Choose host between "HOSTS.API" and "HOSTS.WEB"
-    output = await client.generate_image(
-        metadata, host=HOSTS.WEB, verbose=False, is_opus=False
-    )
+    output = await client.generate_image(metadata, host=HOSTS.WEB)
 
 asyncio.run(main())
 ```
 
+### Inpainting
+
+To perform `inpaint` action, set `action` parameter in Metadata to `ACTIONS.INPAINTING`, and `image` parameter to your base image, and `mask` parameter to the black and white [mask image](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/tests/images/inpaint_left.jpg), where white is the area to inpaint and black to keep as is. Both base image and mask need to be converted into Base64-encoded format. This can be achieved using `base64` module.
+
+```python
+import base64
+from pathlib import Path
+from novelai import Metadata, HOSTS, ACTIONS, RESOLUTIONS, MODELS
+
+async def main():
+    with open("tests/images/portrait.jpg", "rb") as f:
+        base_image = base64.b64encode(f.read()).decode("utf-8")
+
+    with open("tests/images/inpaint_left.jpg", "rb") as f:
+        mask = base64.b64encode(f.read()).decode("utf-8")
+
+    metadata = Metadata(
+        prompt="1girl",
+        negative_prompt="bad anatomy",
+        model=MODELS.V3INP,
+        action=ACTIONS.INPAINT,
+        width=RESOLUTIONS.NORMAL_PORTRAIT[0],
+        height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+        image=base_image,
+        mask=mask,
+    )
+
+    # Choose host between "HOSTS.API" and "HOSTS.WEB"
+    output = await client.generate_image(metadata, host=HOSTS.WEB)
+
+asyncio.run(main())
+```
 
 ### Concurrent Generation
 

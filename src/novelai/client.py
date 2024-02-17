@@ -7,7 +7,7 @@ from loguru import logger
 
 from .metadata import Metadata
 from .utils import encode_access_key, parse_zip
-from .consts import HOSTS, ENDPOINTS, HEADERS, ACTIONS
+from .consts import HOSTS, ENDPOINTS, HEADERS
 from .types import (
     Host,
     User,
@@ -197,11 +197,6 @@ class NAIClient:
         """
         if metadata is None:
             metadata = Metadata(**kwargs)
-
-        # If action is img2img, disable style mixing
-        if metadata.action == ACTIONS.IMG2IMG:
-            metadata.sm = False
-            metadata.sm_dyn = False
 
         if verbose:
             logger.info(
