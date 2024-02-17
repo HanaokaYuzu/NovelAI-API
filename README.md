@@ -85,6 +85,42 @@ async def main():
 asyncio.run(main())
 ```
 
+### Image Generation (img2img)
+
+To use the `img2img` generation, the base image must first be converted into a Base64-encoded format. This can be achieved in Python using the base64 module. Below is a simple example of how to perform img2img generation.
+
+The Metadata class, which contains all parameters related to the img2img feature, is thoroughly documented in its [class definition](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/metadata.py).
+
+```python
+from pathlib import Path
+from novelai import Metadata, HOSTS, ACTIONS
+
+async def main():
+    metadata = Metadata(
+        prompt="1girl",
+        negative_prompt="bad anatomy",
+        width=832,
+        height=1216,
+        n_samples=1,
+        action=ACTIONS.IMG2IMG,
+    )
+
+    print(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
+
+    d = Path(".")
+    metadata.image = base64.b64encode((d / "base.png").read_bytes()).decode(
+        "utf-8"
+    )
+
+    # Choose host between "HOSTS.API" and "HOSTS.WEB"
+    output = await client.generate_image(
+        metadata, host=HOSTS.WEB, verbose=False, is_opus=False
+    )
+
+asyncio.run(main())
+```
+
+
 ### Concurrent Generation
 
 By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **simultaneously run two concurrent generating tasks** by sending requests to API and web backend respectively.
