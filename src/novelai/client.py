@@ -1,22 +1,15 @@
 import asyncio
 from asyncio import Task
+from datetime import datetime
 
 from httpx import AsyncClient, ReadTimeout
 from pydantic import validate_call
 from loguru import logger
 
-from .metadata import Metadata
-from .utils import encode_access_key, parse_zip
-from .consts import HOSTS, ENDPOINTS, HEADERS
-from .types import (
-    Host,
-    User,
-    AuthError,
-    APIError,
-    NovelAIError,
-    TimeoutError,
-    ConcurrentError,
-)
+from .types import User, Metadata, Image
+from .constant import Host, Endpoint, HEADERS
+from .exceptions import AuthError, TimeoutError
+from .utils import ResponseParser, encode_access_key
 
 
 def running(func) -> callable:
@@ -142,58 +135,63 @@ class NAIClient:
         -------
         `str`
             NovelAI access token which is used in the Authorization header with the Bearer scheme
+
+        Raises
+        ------
+        `novelai.exceptions.AuthError`
+            If the account credentials are incorrect
         """
         access_key = encode_access_key(self.user)
 
         response = await self.client.post(
-            url=f"{HOSTS.API.url}{ENDPOINTS.LOGIN}",
+            url=f"{Host.API.value.url}{Endpoint.LOGIN.value}",
             json={
                 "key": access_key,
             },
         )
 
-        match response.status_code:
-            case 201:
-                return response.json()["accessToken"]
-            case 400:
-                raise APIError("A validation error occured.")
-            case 401:
-                raise AuthError("Invalid username or password.")
-            case _:
-                raise NovelAIError(
-                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
-                )
+        # Exceptions are handled in self.init
+        ResponseParser(response).handle_status_code()
+
+        return response.json()["accessToken"]
 
     @running
     @validate_call
     async def generate_image(
         self,
         metadata: Metadata | None = None,
-        host: Host = HOSTS.API,
+        host: Host = Host.API,
         verbose: bool = False,
         is_opus: bool = False,
         **kwargs,
-    ) -> dict[str, bytes]:
+    ) -> list[Image]:
         """
         Send post request to /ai/generate-image endpoint for image generation.
 
         Parameters
         ----------
-        metadata: `Metadata`
+        metadata: `novelai.Metadata`
             Metadata object containing parameters required for image generation
         host: `Host`, optional
-            Host to send the request. Refer to `novelai.consts.HOSTS` for available hosts or provide a custom host
+            Host to send the request. Refer to `novelai.consts.Host` for available hosts or provide a custom host
         verbose: `bool`, optional
             If `True`, will log the estimated Anlas cost before sending the request
         is_opus: `bool`, optional
             Use with `verbose` to calculate the cost based on your subscription tier
         **kwargs: `Any`
-            If `metadata` is not provided, these parameters are used to create a `Metadata` object
+            If `metadata` is not provided, these parameters are used to create a `novelai.Metadata` object
 
         Returns
         -------
-        `dict`
-            Dictionary with file names (`str`) as keys and file contents (`bytes`) as values
+        `list[novelai.Image]`
+            List of `Image` objects containing the generated image and its metadata
+
+        Raises
+        ------
+        `novelai.exceptions.TimeoutError`
+            If the request time exceeds the client's timeout value
+        `novelai.exceptions.AuthError`
+            If the access token is incorrect or expired
         """
         if metadata is None:
             metadata = Metadata(**kwargs)
@@ -208,12 +206,12 @@ class NAIClient:
 
         try:
             response = await self.client.post(
-                url=f"{host.url}{ENDPOINTS.IMAGE}",
+                url=f"{host.value.url}{Endpoint.IMAGE.value}",
                 json={
                     "input": metadata.prompt,
-                    "model": metadata.model,
-                    "action": metadata.action,
-                    "parameters": metadata.model_dump(exclude_none=True),
+                    "model": metadata.model.value,
+                    "action": metadata.action.value,
+                    "parameters": metadata.model_dump(mode="json", exclude_none=True),
                 },
             )
         except ReadTimeout:
@@ -221,35 +219,17 @@ class NAIClient:
                 "Request timed out, please try again. If the problem persists, consider setting a higher `timeout` value when initiating NAIClient."
             )
 
-        match response.status_code:
-            case 200:
-                assert (
-                    response.headers["Content-Type"] == host.accept
-                ), f"Invalid response content type. Expected '{host.accept}', got '{response.headers['Content-Type']}'."
-                return parse_zip(response.content)
-            case 400:
-                raise APIError(
-                    f"A validation error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 401:
-                self.running = False
-                raise AuthError(
-                    f"Access token is incorrect. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 402:
-                self.running = False
-                raise AuthError(
-                    f"An active subscription is required to access this endpoint. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 409:
-                raise NovelAIError(
-                    f"A conflict error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case 429:
-                raise ConcurrentError(
-                    f"A concurrent error occured. Message from NovelAI: {response.json().get('message')}"
-                )
-            case _:
-                raise NovelAIError(
-                    f"An unknown error occured. Error message: {response.status_code} {response.reason_phrase}"
-                )
+        try:
+            ResponseParser(response).handle_status_code()
+        except AuthError:
+            await self.close(0)
+            raise
+
+        assert (
+            response.headers["Content-Type"] == host.value.accept
+        ), f"Invalid response content type. Expected '{host.value.accept}', got '{response.headers['Content-Type']}'."
+
+        return [
+            Image(filename=f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_{host.name.lower()}_p{i}.png", data=data, metadata=metadata)
+            for i, data in enumerate(ResponseParser(response).parse_zip_content())
+        ]

@@ -1,58 +1,58 @@
 import unittest
 
-from novelai import Metadata, RESOLUTIONS
+from novelai import Metadata, Resolution
 
 
 class TestCalculateCost(unittest.TestCase):
     def setUp(self):
         param_s = Metadata(
             prompt="",
-            width=RESOLUTIONS.SMALL_PORTRAIT[0],
-            height=RESOLUTIONS.SMALL_PORTRAIT[1],
+            width=Resolution.SMALL_PORTRAIT.value[0],
+            height=Resolution.SMALL_PORTRAIT.value[1],
         )
         param_m1 = Metadata(
             prompt="",
-            width=RESOLUTIONS.NORMAL_LANDSCAPE[0],
-            height=RESOLUTIONS.NORMAL_LANDSCAPE[1],
+            width=Resolution.NORMAL_LANDSCAPE.value[0],
+            height=Resolution.NORMAL_LANDSCAPE.value[1],
         )
         param_m2 = Metadata(
             prompt="",
-            width=RESOLUTIONS.NORMAL_SQUARE[0],
-            height=RESOLUTIONS.NORMAL_SQUARE[1],
+            width=Resolution.NORMAL_SQUARE.value[0],
+            height=Resolution.NORMAL_SQUARE.value[1],
             sm=False,
         )
         param_m3 = Metadata(
             prompt="",
-            width=RESOLUTIONS.NORMAL_PORTRAIT[0],
-            height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+            width=Resolution.NORMAL_PORTRAIT.value[0],
+            height=Resolution.NORMAL_PORTRAIT.value[1],
             sm_dyn=True,
         )
         param_m4 = Metadata(
             prompt="",
-            width=RESOLUTIONS.NORMAL_SQUARE[0],
-            height=RESOLUTIONS.NORMAL_SQUARE[1],
+            width=Resolution.NORMAL_SQUARE.value[0],
+            height=Resolution.NORMAL_SQUARE.value[1],
             steps=29,
         )
         param_m5 = Metadata(
             prompt="",
-            width=RESOLUTIONS.NORMAL_LANDSCAPE[0],
-            height=RESOLUTIONS.NORMAL_LANDSCAPE[1],
+            width=Resolution.NORMAL_LANDSCAPE.value[0],
+            height=Resolution.NORMAL_LANDSCAPE.value[1],
             n_samples=4,
         )
         param_l1 = Metadata(
             prompt="",
-            width=RESOLUTIONS.LARGE_PORTRAIT[0],
-            height=RESOLUTIONS.LARGE_PORTRAIT[1],
+            width=Resolution.LARGE_PORTRAIT.value[0],
+            height=Resolution.LARGE_PORTRAIT.value[1],
         )
         param_l2 = Metadata(
             prompt="",
-            width=RESOLUTIONS.LARGE_SQUARE[0],
-            height=RESOLUTIONS.LARGE_SQUARE[1],
+            width=Resolution.LARGE_SQUARE.value[0],
+            height=Resolution.LARGE_SQUARE.value[1],
         )
         param_xl = Metadata(
             prompt="",
-            width=RESOLUTIONS.WALLPAPER_LANDSCAPE[0],
-            height=RESOLUTIONS.WALLPAPER_LANDSCAPE[1],
+            width=Resolution.WALLPAPER_LANDSCAPE.value[0],
+            height=Resolution.WALLPAPER_LANDSCAPE.value[1],
         )
         self.params = {
             "param_s": param_s,

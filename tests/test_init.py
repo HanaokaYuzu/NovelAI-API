@@ -2,7 +2,8 @@ import asyncio
 import unittest
 from unittest.mock import MagicMock, patch
 
-from novelai import NAIClient, APIError, AuthError, NovelAIError, HOSTS, ENDPOINTS
+from novelai import NAIClient, Host, Endpoint
+from novelai.exceptions import APIError, AuthError, NovelAIError
 
 
 class TestInit(unittest.IsolatedAsyncioTestCase):
@@ -31,7 +32,7 @@ class TestInit(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(self.naiclient.running)
         mock_post.assert_called_once_with(
-            url=f"{HOSTS.API.url}{ENDPOINTS.LOGIN}",
+            url=f"{Host.API.value.url}{Endpoint.LOGIN.value}",
             json={"key": "test_key"},
         )
 
@@ -41,6 +42,10 @@ class TestInit(unittest.IsolatedAsyncioTestCase):
 
     @patch("novelai.client.AsyncClient.post")
     async def test_exceptions(self, mock_post):
+        mock_post.return_value.json = MagicMock(
+            return_value={"message": "test_error_message"}
+        )
+
         # Error cases
         error_codes = [400, 401, 500]
         exceptions = [APIError, AuthError, NovelAIError]

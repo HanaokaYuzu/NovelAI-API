@@ -55,44 +55,37 @@ By passing `verbose=True`, the method will print the estimated Anlas cost each t
 The full parameter list of `Metadata` can be found in the [class definition](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/metadata.py).
 
 ```python
-from pathlib import Path
-from novelai import Metadata, HOSTS
+from novelai import Metadata, Host, Resolution
 
 async def main():
     metadata = Metadata(
         prompt="1girl",
         negative_prompt="bad anatomy",
-        width=832,
-        height=1216,
+        res_preset=Resolution.NORMAL_PORTRAIT,
         n_samples=1,
     )
 
     print(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
 
-    # Choose host between "HOSTS.API" and "HOSTS.WEB"
+    # Choose host between "Host.API" and "Host.WEB"
+    # Both of two hosts work the same for all actions mentioned below
     output = await client.generate_image(
-        metadata, host=HOSTS.WEB, verbose=False, is_opus=False
+        metadata, host=Host.WEB, verbose=False, is_opus=False
     )
 
-    path = Path("./temp")
-    path.mkdir(parents=True, exist_ok=True)
-
-    for filename, data in output.items():
-        dest = Path(path / filename)
-        dest.write_bytes(data)
-        print(f"Image saved as {dest.resolve()}")
+    for image in output:
+        image.save(path="output images", verbose=True)
 
 asyncio.run(main())
 ```
 
 ### Image to Image
 
-To perform `img2img` action, set `action` parameter in Metadata to `ACTIONS.IMG2IMG`, and `image` parameter to your base image. The base image  needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
+To perform `img2img` action, set `action` parameter in Metadata to `Action.IMG2IMG`, and `image` parameter to your base image. The base image  needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
 
 ```python
 import base64
-from pathlib import Path
-from novelai import Metadata, HOSTS, ACTIONS, RESOLUTIONS
+from novelai import Metadata, Action
 
 async def main():
     with open("tests/images/portrait.jpg", "rb") as f:
@@ -101,29 +94,30 @@ async def main():
     metadata = Metadata(
         prompt="1girl",
         negative_prompt="bad anatomy",
-        action=ACTIONS.IMG2IMG,
-        width=RESOLUTIONS.NORMAL_PORTRAIT[0],
-        height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+        action=Action.IMG2IMG,
+        width=832,
+        height=1216,
         n_samples=1,
         image=base_image,
         strength=0.5,
         noise=0.1,
     )
 
-    # Choose host between "HOSTS.API" and "HOSTS.WEB"
-    output = await client.generate_image(metadata, host=HOSTS.WEB)
+    output = await client.generate_image(metadata, verbose=True)
+
+    for image in output:
+        image.save(path="output images", verbose=True)
 
 asyncio.run(main())
 ```
 
 ### Inpainting
 
-To perform `inpaint` action, set `action` parameter in Metadata to `ACTIONS.INPAINTING`, and `image` parameter to your base image, and `mask` parameter to the black and white [mask image](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/tests/images/inpaint_left.jpg), where white is the area to inpaint and black to keep as is. Both base image and mask need to be converted into Base64-encoded format. This can be achieved using `base64` module.
+To perform `inpaint` action, set `action` parameter in Metadata to `Action.INPAINTING`, and `image` parameter to your base image, and `mask` parameter to the black and white [mask image](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/tests/images/inpaint_left.jpg), where white is the area to inpaint and black to keep as is. Both base image and mask need to be converted into Base64-encoded format. This can be achieved using `base64` module.
 
 ```python
 import base64
-from pathlib import Path
-from novelai import Metadata, HOSTS, ACTIONS, RESOLUTIONS, MODELS
+from novelai import Metadata, Model, Action, Resolution
 
 async def main():
     with open("tests/images/portrait.jpg", "rb") as f:
@@ -135,16 +129,17 @@ async def main():
     metadata = Metadata(
         prompt="1girl",
         negative_prompt="bad anatomy",
-        model=MODELS.V3INP,
-        action=ACTIONS.INPAINT,
-        width=RESOLUTIONS.NORMAL_PORTRAIT[0],
-        height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+        model=Model.V3INP,
+        action=Action.INPAINT,
+        res_preset=Resolution.NORMAL_PORTRAIT,
         image=base_image,
         mask=mask,
     )
 
-    # Choose host between "HOSTS.API" and "HOSTS.WEB"
-    output = await client.generate_image(metadata, host=HOSTS.WEB)
+    output = await client.generate_image(metadata, verbose=True)
+
+    for image in output:
+        image.save(path="output images", verbose=True)
 
 asyncio.run(main())
 ```
@@ -159,11 +154,11 @@ Note that API and web backend both have limit on concurrent generation. Therefor
 
 ```python
 async def task_api():
-    await client.generate_image(metadata, host=HOSTS.API)
+    await client.generate_image(metadata, host=Host.API)
     print("API task completed")
 
 async def task_web():
-    await client.generate_image(metadata, host=HOSTS.WEB)
+    await client.generate_image(metadata, host=Host.WEB)
     print("Web task completed")
 
 async def main():

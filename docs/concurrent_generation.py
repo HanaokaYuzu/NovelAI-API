@@ -1,18 +1,14 @@
 import os
 import asyncio
-from pathlib import Path
 
 from loguru import logger
 
-from novelai import NAIClient, Metadata, HOSTS
+from novelai import NAIClient, Metadata, Host
 
 
 client = NAIClient(
     username=os.getenv("USERNAME"), password=os.getenv("PASSWORD")
 )
-
-path = Path("./temp")
-path.mkdir(parents=True, exist_ok=True)
 
 
 @logger.catch
@@ -23,13 +19,11 @@ async def task_api():
     )
 
     output = await client.generate_image(
-        metadata, host=HOSTS.API, verbose=True, is_opus=True
+        metadata, host=Host.API, verbose=True, is_opus=True
     )
 
-    for filename, data in output.items():
-        dest = Path(path / f"api_{filename}")
-        dest.write_bytes(data)
-        logger.info(f"Image saved as {dest.resolve()}")
+    for image in output:
+        image.save(verbose=True)
 
     logger.success("API task completed!")
 
@@ -48,13 +42,11 @@ async def task_web():
     )
 
     output = await client.generate_image(
-        metadata, host=HOSTS.WEB, verbose=True, is_opus=True
+        metadata, host=Host.WEB, verbose=True, is_opus=True
     )
 
-    for filename, data in output.items():
-        dest = Path(path / f"web_{filename}")
-        dest.write_bytes(data)
-        logger.info(f"Image saved as {dest.resolve()}")
+    for image in output:
+        image.save(verbose=True)
 
     logger.success("Web task completed!")
 

@@ -3,23 +3,16 @@ import base64
 import asyncio
 import unittest
 from unittest.mock import AsyncMock, MagicMock
-from pathlib import Path
 
 from httpx import AsyncClient
 
-from novelai import (
-    NAIClient,
+from novelai import NAIClient, Metadata, Host, Model, Action, Resolution
+from novelai.exceptions import (
     APIError,
     AuthError,
-    NovelAIError,
     ConcurrentError,
     TimeoutError,
-    Metadata,
-    HEADERS,
-    HOSTS,
-    MODELS,
-    ACTIONS,
-    RESOLUTIONS,
+    NovelAIError,
 )
 
 
@@ -29,35 +22,32 @@ with open("tests/images/portrait.jpg", "rb") as f:
 with open("tests/images/inpaint_left.jpg", "rb") as f:
     mask = base64.b64encode(f.read()).decode("utf-8")
 
-output_path = Path("temp")
-output_path.mkdir(parents=True, exist_ok=True)
-
 
 class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    async def asyncSetUp(self):
         self.naiclient = NAIClient(
             os.getenv("USERNAME") or "test_username",
             os.getenv("PASSWORD") or "test_password",
         )
-        self.naiclient.client = AsyncClient(headers=HEADERS)
 
     @unittest.skipIf(
         not (os.getenv("USERNAME") and os.getenv("PASSWORD")),
         "Skipped due to missing environment variables",
     )
     async def test_generate(self):
-        metadata = Metadata(prompt="1girl", seed=1, extra_noise_seed=2)
+        await self.naiclient.init()
+        metadata = Metadata(prompt="1girl")
 
         async def task_api():
             with self.subTest("task_api"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.API
+                        metadata, host=Host.API
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "generate_api.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="generate_api.png", verbose=True)
+                        self.assertTrue(image.filename == "generate_api.png")
                 except ConcurrentError:
                     self.skipTest("task_api raised concurrent error")
                 except TimeoutError:
@@ -67,12 +57,12 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             with self.subTest("task_web"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.WEB
+                        metadata, host=Host.WEB
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "generate_web.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="generate_web.png", verbose=True)
+                        self.assertTrue(image.filename == "generate_web.png")
                 except ConcurrentError:
                     self.skipTest("task_web raised concurrent error")
                 except TimeoutError:
@@ -89,11 +79,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         "Skipped due to missing environment variables",
     )
     async def test_img2img(self):
+        await self.naiclient.init()
         metadata = Metadata(
             prompt="1girl",
-            action=ACTIONS.IMG2IMG,
-            width=RESOLUTIONS.NORMAL_PORTRAIT[0],
-            height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+            action=Action.IMG2IMG,
+            res_preset=Resolution.NORMAL_PORTRAIT,
             image=base_image,
             strength=0.45,
             noise=0.1,
@@ -103,12 +93,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             with self.subTest("task_api"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.API
+                        metadata, host=Host.API
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "img2img_api.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="img2img_api.png", verbose=True)
                 except ConcurrentError:
                     self.skipTest("task_api raised concurrent error")
                 except TimeoutError:
@@ -118,12 +107,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             with self.subTest("task_web"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.WEB
+                        metadata, host=Host.WEB
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "img2img_web.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="img2img_web.png", verbose=True)
                 except ConcurrentError:
                     self.skipTest("task_web raised concurrent error")
                 except TimeoutError:
@@ -140,12 +128,12 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         "Skipped due to missing environment variables",
     )
     async def test_inpaint(self):
+        await self.naiclient.init()
         metadata = Metadata(
             prompt="1girl",
-            model=MODELS.V3INP,
-            action=ACTIONS.INPAINT,
-            width=RESOLUTIONS.NORMAL_PORTRAIT[0],
-            height=RESOLUTIONS.NORMAL_PORTRAIT[1],
+            model=Model.V3INP,
+            action=Action.INPAINT,
+            res_preset=Resolution.NORMAL_PORTRAIT,
             image=base_image,
             mask=mask,
         )
@@ -154,12 +142,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             with self.subTest("task_api"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.API
+                        metadata, host=Host.API
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "inpaint_api.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="inpaint_api.png", verbose=True)
                 except ConcurrentError:
                     self.skipTest("task_api raised concurrent error")
                 except TimeoutError:
@@ -169,12 +156,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             with self.subTest("task_web"):
                 try:
                     output = await self.naiclient.generate_image(
-                        metadata, host=HOSTS.WEB
+                        metadata, host=Host.WEB
                     )
-                    self.assertTrue("image_0.png" in output)
-                    Path(output_path / "inpaint_web.png").write_bytes(
-                        output["image_0.png"]
-                    )
+                    self.assertTrue(len(output) > 0)
+                    for image in output:
+                        image.save(filename="inpaint_web.png", verbose=True)
                 except ConcurrentError:
                     self.skipTest("task_web raised concurrent error")
                 except TimeoutError:
@@ -187,6 +173,7 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait(tasks)
 
     def test_exceptions(self):
+        self.naiclient.client = AsyncClient()
         metadata = Metadata(prompt="1girl", seed=1, extra_noise_seed=2)
         error_codes = [400, 401, 402, 409, 429, 500]
         error_exceptions = [

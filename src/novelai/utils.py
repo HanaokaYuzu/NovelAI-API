@@ -1,11 +1,13 @@
 import io
 import zipfile
-from hashlib import blake2b
+from typing import Generator
 from base64 import urlsafe_b64encode
+from hashlib import blake2b
 
 import argon2
 
 from .types import User
+from .exceptions import APIError, AuthError, NovelAIError, ConcurrentError
 
 
 # https://github.com/Aedial/novelai-api/blob/main/novelai_api/utils.py
@@ -15,7 +17,7 @@ def encode_access_key(user: User) -> str:
 
     Parameters
     ----------
-    user : `User`
+    user : `novelai.types.User`
         User object containing username and password
 
     Returns
@@ -43,24 +45,78 @@ def encode_access_key(user: User) -> str:
     return hashed[:64]
 
 
-def parse_zip(zip_data: bytes) -> dict:
+class ResponseParser:
     """
-    Parse binary data of a zip file into a dictionary.
+    A helper class to parse the response from NovelAI's API.
 
     Parameters
     ----------
-    zip_data : `bytes`
-        Binary data of a zip file
-
-    Returns
-    -------
-    `dict`
-        Dictionary containing pairs of filename (in `str`) and file data (in `bytes`) for each file in the zip
+    response : `httpx.Response`
+        Response object from the API
     """
-    files = {}
 
-    with zipfile.ZipFile(io.BytesIO(zip_data)) as zip_file:
-        for filename in zip_file.namelist():
-            files[filename] = zip_file.read(filename)
+    def __init__(self, response):
+        self.response = response
 
-    return files
+    def handle_status_code(self):
+        """
+        Handle the status code of the response.
+
+        Raises
+        ------
+        `novelai.exceptions.APIError`
+            If the status code is 400
+        `novelai.exceptions.AuthError`
+            If the status code is 401 or 402
+        `novelai.exceptions.ConcurrentError`
+            If the status code is 429
+        `novelai.exceptions.NovelAIError`
+            If the status code is 409 or any other unknown status code
+        """
+        match self.response.status_code:
+            case 200 | 201:
+                return
+            case 400:
+                raise APIError(
+                    f"A validation error occured. Message from NovelAI: {self.response.json().get('message')}"
+                )
+            case 401:
+                self.running = False
+                raise AuthError(
+                    f"Access token is incorrect. Message from NovelAI: {self.response.json().get('message')}"
+                )
+            case 402:
+                self.running = False
+                raise AuthError(
+                    f"An active subscription is required to access this endpoint. Message from NovelAI: {self.response.json().get('message')}"
+                )
+            case 409:
+                raise NovelAIError(
+                    f"A conflict error occured. Message from NovelAI: {self.response.json().get('message')}"
+                )
+            case 429:
+                raise ConcurrentError(
+                    f"A concurrent error occured. Message from NovelAI: {self.response.json().get('message')}"
+                )
+            case _:
+                raise NovelAIError(
+                    f"An unknown error occured. Error message: {self.response.status_code} {self.response.reason_phrase}"
+                )
+
+    def parse_zip_content(self) -> Generator[bytes, None, None]:
+        """
+        Parse binary data of a zip file into a dictionary.
+
+        Parameters
+        ----------
+        zip_data : `bytes`
+            Binary data of a zip file
+
+        Returns
+        -------
+        `Generator`
+            A generator of binary data of all files in the zip
+        """
+        with zipfile.ZipFile(io.BytesIO(self.response.content)) as zip_file:
+            for filename in zip_file.namelist():
+                yield zip_file.read(filename)
