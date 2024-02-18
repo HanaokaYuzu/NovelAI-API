@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Literal, Annotated, override
+from typing import Literal, Annotated
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -175,7 +175,7 @@ class Metadata(BaseModel):
             )
         return self
 
-    @override
+    # @override
     def model_post_init(self, *args) -> None:
         """
         Post-initialization hook. Inherit from `pydantic.BaseModel`.
@@ -187,13 +187,12 @@ class Metadata(BaseModel):
         self.height = self.height or self.res_preset.value[1]
 
         # Append undesired content tags to negative prompt
-        match self.ucPreset:
-            case 0:  # Heavy
-                self.negative_prompt += ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
-            case 1:  # Light
-                self.negative_prompt += ", lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
-            case 2:  # Human Focus
-                self.negative_prompt += ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"
+        if self.ucPreset == 0:  # Heavy
+            self.negative_prompt += ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
+        elif self.ucPreset == 1:  # Light
+            self.negative_prompt += ", lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
+        elif self.ucPreset == 2:  # Human Focus
+            self.negative_prompt += ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"
 
         # Append quality tags to prompt
         if self.qualityToggle:

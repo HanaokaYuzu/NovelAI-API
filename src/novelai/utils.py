@@ -73,35 +73,32 @@ class ResponseParser:
         `novelai.exceptions.NovelAIError`
             If the status code is 409 or any other unknown status code
         """
-        match self.response.status_code:
-            case 200 | 201:
-                return
-            case 400:
-                raise APIError(
-                    f"A validation error occured. Message from NovelAI: {self.response.json().get('message')}"
-                )
-            case 401:
-                self.running = False
-                raise AuthError(
-                    f"Access token is incorrect. Message from NovelAI: {self.response.json().get('message')}"
-                )
-            case 402:
-                self.running = False
-                raise AuthError(
-                    f"An active subscription is required to access this endpoint. Message from NovelAI: {self.response.json().get('message')}"
-                )
-            case 409:
-                raise NovelAIError(
-                    f"A conflict error occured. Message from NovelAI: {self.response.json().get('message')}"
-                )
-            case 429:
-                raise ConcurrentError(
-                    f"A concurrent error occured. Message from NovelAI: {self.response.json().get('message')}"
-                )
-            case _:
-                raise NovelAIError(
-                    f"An unknown error occured. Error message: {self.response.status_code} {self.response.reason_phrase}"
-                )
+        if self.response.status_code == 200 or self.response.status_code == 201:
+            return
+        elif self.response.status_code == 400:
+            raise APIError(
+                f"A validation error occured. Message from NovelAI: {self.response.json().get('message')}"
+            )
+        elif self.response.status_code == 401:
+            raise AuthError(
+                f"Access token is incorrect. Message from NovelAI: {self.response.json().get('message')}"
+            )
+        elif self.response.status_code == 402:
+            raise AuthError(
+                f"An active subscription is required to access this endpoint. Message from NovelAI: {self.response.json().get('message')}"
+            )
+        elif self.response.status_code == 409:
+            raise NovelAIError(
+                f"A conflict error occured. Message from NovelAI: {self.response.json().get('message')}"
+            )
+        elif self.response.status_code == 429:
+            raise ConcurrentError(
+                f"A concurrent error occured. Message from NovelAI: {self.response.json().get('message')}"
+            )
+        else:
+            raise NovelAIError(
+                f"An unknown error occured. Error message: {self.response.status_code} {self.response.reason_phrase}"
+            )
 
     def parse_zip_content(self) -> Generator[bytes, None, None]:
         """
