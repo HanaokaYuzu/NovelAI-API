@@ -4,15 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from httpx import AsyncClient
 
-from novelai import (
-    NAIClient,
-    APIError,
-    AuthError,
-    NovelAIError,
-    HOSTS,
-    ENDPOINTS,
-    HEADERS,
-)
+from novelai import NAIClient, Host, Endpoint, HEADERS
+from novelai.exceptions import APIError, AuthError, NovelAIError
 
 
 class TestGetAccessToken(unittest.IsolatedAsyncioTestCase):
@@ -34,7 +27,7 @@ class TestGetAccessToken(unittest.IsolatedAsyncioTestCase):
         # Send testing request to NovelAI's API
         self.naiclient.client.headers["Authorization"] = f"Bearer {output_token}"
         response = await self.naiclient.client.get(
-            url=f"{HOSTS.API.url}{ENDPOINTS.USERDATA}"
+            url=f"{Host.API.value.url}{Endpoint.USERDATA.value}"
         )
 
         # Assertions
@@ -50,7 +43,10 @@ class TestGetAccessToken(unittest.IsolatedAsyncioTestCase):
         # Function call & assertion
         with self.assertRaises(AuthError) as context:
             await self.naiclient.get_access_token()
-        self.assertEqual(str(context.exception), "Invalid username or password.")
+        self.assertEqual(
+            str(context.exception),
+            "Access token is incorrect. Message from NovelAI: Incorrect access key.",
+        )
 
     @patch("novelai.client.encode_access_key")
     async def test_validation_error(self, mock_encode_access_key):
@@ -60,7 +56,10 @@ class TestGetAccessToken(unittest.IsolatedAsyncioTestCase):
         # Function call & assertion
         with self.assertRaises(APIError) as context:
             await self.naiclient.get_access_token()
-        self.assertEqual(str(context.exception), "A validation error occured.")
+        self.assertEqual(
+            str(context.exception),
+            "A validation error occured. Message from NovelAI: key must be longer than or equal to 64 characters",
+        )
 
     async def test_exceptions(self):
         # Error cases
