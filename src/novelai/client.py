@@ -160,7 +160,7 @@ class NAIClient:
     async def generate_image(
         self,
         metadata: Metadata | None = None,
-        host: Host = Host.API,
+        host: Host = Host.WEB,
         verbose: bool = False,
         is_opus: bool = False,
         **kwargs,
