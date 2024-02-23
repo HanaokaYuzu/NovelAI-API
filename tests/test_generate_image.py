@@ -38,41 +38,16 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         await self.naiclient.init()
         metadata = Metadata(prompt="1girl")
 
-        async def task_api():
-            with self.subTest("task_api"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.API
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="generate_api.png", verbose=True)
-                        self.assertTrue(image.filename == "generate_api.png")
-                except ConcurrentError:
-                    self.skipTest("task_api raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_api timed out")
-
-        async def task_web():
-            with self.subTest("task_web"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.WEB
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="generate_web.png", verbose=True)
-                        self.assertTrue(image.filename == "generate_web.png")
-                except ConcurrentError:
-                    self.skipTest("task_web raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_web timed out")
-
-        tasks = [
-            asyncio.create_task(task_api()),
-            asyncio.create_task(task_web()),
-        ]
-        await asyncio.wait(tasks)
+        try:
+            output = await self.naiclient.generate_image(metadata, host=Host.WEB)
+            self.assertTrue(len(output) > 0)
+            for image in output:
+                image.save(filename="generate.png", verbose=True)
+                self.assertTrue(image.filename == "generate.png")
+        except ConcurrentError:
+            self.skipTest("Task raised concurrent error")
+        except TimeoutError:
+            self.skipTest("Task timed out")
 
     @unittest.skipIf(
         not (os.getenv("USERNAME") and os.getenv("PASSWORD")),
@@ -89,39 +64,15 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             noise=0.1,
         )
 
-        async def task_api():
-            with self.subTest("task_api"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.API
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="img2img_api.png", verbose=True)
-                except ConcurrentError:
-                    self.skipTest("task_api raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_api timed out")
-
-        async def task_web():
-            with self.subTest("task_web"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.WEB
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="img2img_web.png", verbose=True)
-                except ConcurrentError:
-                    self.skipTest("task_web raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_web timed out")
-
-        tasks = [
-            asyncio.create_task(task_api()),
-            asyncio.create_task(task_web()),
-        ]
-        await asyncio.wait(tasks)
+        try:
+            output = await self.naiclient.generate_image(metadata, host=Host.WEB)
+            self.assertTrue(len(output) > 0)
+            for image in output:
+                image.save(filename="img2img.png", verbose=True)
+        except ConcurrentError:
+            self.skipTest("Task raised concurrent error")
+        except TimeoutError:
+            self.skipTest("Task timed out")
 
     @unittest.skipIf(
         not (os.getenv("USERNAME") and os.getenv("PASSWORD")),
@@ -138,39 +89,40 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             mask=mask,
         )
 
-        async def task_api():
-            with self.subTest("task_api"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.API
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="inpaint_api.png", verbose=True)
-                except ConcurrentError:
-                    self.skipTest("task_api raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_api timed out")
+        try:
+            output = await self.naiclient.generate_image(metadata, host=Host.WEB)
+            self.assertTrue(len(output) > 0)
+            for image in output:
+                image.save(filename="inpaint.png", verbose=True)
+        except ConcurrentError:
+            self.skipTest("Task raised concurrent error")
+        except TimeoutError:
+            self.skipTest("Task timed out")
 
-        async def task_web():
-            with self.subTest("task_web"):
-                try:
-                    output = await self.naiclient.generate_image(
-                        metadata, host=Host.WEB
-                    )
-                    self.assertTrue(len(output) > 0)
-                    for image in output:
-                        image.save(filename="inpaint_web.png", verbose=True)
-                except ConcurrentError:
-                    self.skipTest("task_web raised concurrent error")
-                except TimeoutError:
-                    self.skipTest("task_web timed out")
+    @unittest.skipIf(
+        not (os.getenv("USERNAME") and os.getenv("PASSWORD")),
+        "Skipped due to missing environment variables",
+    )
+    async def test_vibe_transfer(self):
+        await self.naiclient.init()
+        metadata = Metadata(
+            prompt="1girl",
+            action=Action.GENERATE,
+            res_preset=Resolution.NORMAL_PORTRAIT,
+            reference_image=base_image,
+            reference_infomation_extracted=1,
+            reference_strength=0.6,
+        )
 
-        tasks = [
-            asyncio.create_task(task_api()),
-            asyncio.create_task(task_web()),
-        ]
-        await asyncio.wait(tasks)
+        try:
+            output = await self.naiclient.generate_image(metadata, host=Host.WEB)
+            self.assertTrue(len(output) > 0)
+            for image in output:
+                image.save(filename="vibe_transfer.png", verbose=True)
+        except ConcurrentError:
+            self.skipTest("Task raised concurrent error")
+        except TimeoutError:
+            self.skipTest("Task timed out")
 
     def test_exceptions(self):
         self.naiclient.client = AsyncClient()

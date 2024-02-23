@@ -102,6 +102,15 @@ class Metadata(BaseModel):
         Base64-encoded black and white image to use as a mask for inpainting
         White is the area to inpaint and black is the rest
 
+    | Vibe Transfer
+    reference_image: `str`, optional
+        Base64-encoded image to use as a base image for Vibe Transfer
+    reference_infomation_extracted: `float`, optional
+        Range: 0-1, refer to https://docs.novelai.net/.image/vibetransfer.html#information-extracted
+    reference_strength: `float`, optional
+        Range: 0-1, refer to https://docs.novelai.net/.image/vibetransfer.html#reference-strength
+        The strength AI uses to emulate visual cues, such as stylistic aspects, colors etc., from the given input image
+
     | Misc
     params_version: `int`, optional
         Defaults to 1
@@ -160,6 +169,11 @@ class Metadata(BaseModel):
     # Inpaint
     add_original_image: bool = True
     mask: str | None = None
+
+    # Vibe Transfer
+    reference_image: str | None = None
+    reference_infomation_extracted: float | None = Field(default=1, ge=0.01, le=1, multiple_of=0.01)
+    reference_strength: float | None = Field(default=0.6, ge=0.01, le=1, multiple_of=0.01)
 
     # Misc
     params_version: Literal[1] = 1

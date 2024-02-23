@@ -144,6 +144,35 @@ async def main():
 asyncio.run(main())
 ```
 
+### Vibe Transfer
+
+Vibe transfer doesn't have its own action type. Instead, it is achieved by adding a `reference_image` parameter in Metadata. The reference image needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
+
+```python
+import base64
+from novelai import Metadata, Resolution
+
+async def main():
+    with open("tests/images/portrait.jpg", "rb") as f:
+        base_image = base64.b64encode(f.read()).decode("utf-8")
+
+    metadata = Metadata(
+        prompt="1girl",
+        negative_prompt="bad anatomy",
+        res_preset=Resolution.NORMAL_PORTRAIT,
+        reference_image=base_image,
+        reference_infomation_extracted=1,
+        reference_strength=0.6,
+    )
+
+    output = await client.generate_image(metadata, verbose=True)
+
+    for image in output:
+        image.save(path="output images", verbose=True)
+
+asyncio.run(main())
+```
+
 ### Concurrent Generation
 
 By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **simultaneously run two concurrent generating tasks** by sending requests to API and web backend respectively.
