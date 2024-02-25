@@ -67,23 +67,23 @@ class NAIClient:
         self.client: AsyncClient | None = None
         self.running: bool = False
         self.auto_close: bool = False
-        self.close_delay: int = 0
+        self.close_delay: float = 300
         self.close_task: Task | None = None
 
     async def init(
-        self, timeout: float = 30, auto_close: bool = False, close_delay: int = 300
+        self, timeout: float = 30, auto_close: bool = False, close_delay: float = 300
     ) -> None:
         """
         Get access token and implement Authorization header.
 
         Parameters
         ----------
-        timeout: `int`, optional
+        timeout: `float`, optional
             Request timeout of the client in seconds. Used to limit the max waiting time when sending a request
         auto_close: `bool`, optional
             If `True`, the client will close connections and clear resource usage after a certain period
             of inactivity. Useful for keep-alive services
-        close_delay: `int`, optional
+        close_delay: `float`, optional
             Time to wait before auto-closing the client in seconds. Effective only if `auto_close` is `True`
         """
         try:
@@ -102,19 +102,25 @@ class NAIClient:
             if self.auto_close:
                 await self.reset_close_task()
         except Exception:
-            await self.close(0)
+            await self.close()
             raise
 
-    async def close(self, wait: int | None = None) -> None:
+    async def close(self, delay: float = 0) -> None:
         """
         Close the client after a certain period of inactivity, or call manually to close immediately.
 
         Parameters
         ----------
-        wait: `int`, optional
+        delay: `float`, optional
             Time to wait before closing the client in seconds
         """
-        await asyncio.sleep(wait is not None and wait or self.close_delay)
+        if delay:
+            await asyncio.sleep(delay)
+
+        if self.close_task:
+            self.close_task.cancel()
+            self.close_task = None
+
         await self.client.aclose()
         self.running = False
 
@@ -125,7 +131,7 @@ class NAIClient:
         if self.close_task:
             self.close_task.cancel()
             self.close_task = None
-        self.close_task = asyncio.create_task(self.close())
+        self.close_task = asyncio.create_task(self.close(self.close_delay))
 
     async def get_access_token(self) -> str:
         """
@@ -222,7 +228,7 @@ class NAIClient:
         try:
             ResponseParser(response).handle_status_code()
         except AuthError:
-            await self.close(0)
+            await self.close()
             raise
 
         assert (

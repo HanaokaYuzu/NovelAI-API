@@ -146,11 +146,7 @@ class Metadata(BaseModel):
         gt=0,
         le=4294967295 - 7,
     )
-    extra_noise_seed: int = Field(
-        default_factory=lambda: random.randint(0, 4294967295 - 7),
-        gt=0,
-        le=4294967295 - 7,
-    )
+    extra_noise_seed: Annotated[int, Field(gt=0, le=4294967295 - 7)] | None = None
     sampler: Sampler = Sampler.EULER
     sm: bool = True
     sm_dyn: bool = False
@@ -160,8 +156,8 @@ class Metadata(BaseModel):
 
     # img2img
     image: str | None = None
-    strength: float | None = Field(default=0.3, ge=0.01, le=0.99, multiple_of=0.01)
-    noise: float | None = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
+    strength: Annotated[float, Field(ge=0.01, le=0.99, multiple_of=0.01)] | None = None
+    noise: Annotated[float, Field(ge=0, le=0.99, multiple_of=0.01)] | None = None
     controlnet_strength: float = Field(default=1, ge=0.1, le=2, multiple_of=0.1)
     controlnet_condition: str | None = None
     controlnet_model: Controlnet | None = None
@@ -172,8 +168,10 @@ class Metadata(BaseModel):
 
     # Vibe Transfer
     reference_image: str | None = None
-    reference_infomation_extracted: float | None = Field(default=1, ge=0.01, le=1, multiple_of=0.01)
-    reference_strength: float | None = Field(default=0.6, ge=0.01, le=1, multiple_of=0.01)
+    reference_infomation_extracted: float = Field(
+        default=1, ge=0.01, le=1, multiple_of=0.01
+    )
+    reference_strength: float = Field(default=0.6, ge=0.01, le=1, multiple_of=0.01)
 
     # Misc
     params_version: Literal[1] = 1
@@ -213,10 +211,15 @@ class Metadata(BaseModel):
         if self.qualityToggle:
             self.prompt += ", best quality, amazing quality, very aesthetic, absurdres"
 
-        # Disable SMEA and SMEA DYN for img2img/inpaint
+        # Disable SMEA and SMEA DYN and fill default extra param values for img2img/inpaint
         if self.action == Action.IMG2IMG or self.action == Action.INPAINT:
             self.sm = False
             self.sm_dyn = False
+            self.strength = self.strength or 0.3
+            self.noise = self.noise or 0
+            self.extra_noise_seed = self.extra_noise_seed or random.randint(
+                0, 4294967295 - 7
+            )
 
     def get_max_n_samples(self) -> int:
         """

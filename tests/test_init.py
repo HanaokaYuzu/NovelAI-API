@@ -21,12 +21,12 @@ class TestInit(unittest.IsolatedAsyncioTestCase):
         )
 
         # Function call
-        await self.naiclient.init(timeout=33, auto_close=True, close_delay=0)
+        await self.naiclient.init(timeout=33, auto_close=True, close_delay=0.75)
 
         # Assertions
         self.assertEqual(self.naiclient.client.timeout.connect, 33)
         self.assertEqual(self.naiclient.auto_close, True)
-        self.assertEqual(self.naiclient.close_delay, 0)
+        self.assertEqual(self.naiclient.close_delay, 0.75)
         self.assertEqual(
             self.naiclient.client.headers["Authorization"], "Bearer test_token"
         )
@@ -36,8 +36,10 @@ class TestInit(unittest.IsolatedAsyncioTestCase):
             json={"key": "test_key"},
         )
 
-        # Awaited tasks assertions
-        await asyncio.sleep(0.01)
+        # Auto close
+        await asyncio.sleep(0.5)
+        self.assertTrue(self.naiclient.running)
+        await asyncio.sleep(0.5)
         self.assertFalse(self.naiclient.running)
 
     @patch("novelai.client.AsyncClient.post")

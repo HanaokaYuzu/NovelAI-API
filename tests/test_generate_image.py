@@ -149,6 +149,12 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(exception):
                     asyncio.run(self.naiclient.generate_image(metadata))
 
+                if exception == AuthError:
+                    self.assertTrue(self.naiclient.client.is_closed)
+                    self.assertFalse(self.naiclient.running)
+                else:
+                    self.assertTrue(self.naiclient.running)
+
 
 if __name__ == "__main__":
     unittest.main()
