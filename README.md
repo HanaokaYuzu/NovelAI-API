@@ -9,6 +9,12 @@ A lightweight asynchronous Python wrapper for NovelAI image generation API.
 - **Parameterized** - Provides a `Metadata` class to easily set up generation parameters with type validation.
 - **Asynchronous** - Utilizes `asyncio` to run generating tasks and return outputs efficiently.
 
+> [!IMPORTANT]
+>
+> Unfortunately, NovelAI has announced that image generation function of the API endpoint will be depreciated starting from Mar 21, 2024. As a result, concurrent generation feature will no longer be available.
+> 
+> [Source](https://twitter.com/novelaiofficial/status/1760404186066227673)
+
 ## Installation
 
 Install with pip:
