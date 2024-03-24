@@ -41,14 +41,6 @@ Install/update with pip:
 pip install -U novelai
 ```
 
-Note that this package requires Python **3.12** or higher. For lower versions, install the legacy version instead:
-
-```sh
-pip install -U novelai-legacy
-```
-
-Legacy branch has the same features as master branch on user side, the only difference is code compatibility.
-
 ## Usage
 
 ### Initialization
