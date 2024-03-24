@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/HanaokaYuzu/NovelAI-API/master/docs/img/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
+# <img src="https://raw.githubusercontent.com/HanaokaYuzu/NovelAI-API/master/docs/assets/novelai-logo.svg" height="35px" alt="NovelAI Icon"/> NovelAI-API
 
 A lightweight asynchronous Python wrapper for NovelAI image generation API.
 
@@ -11,22 +11,40 @@ A lightweight asynchronous Python wrapper for NovelAI image generation API.
 
 > [!IMPORTANT]
 >
-> Unfortunately, NovelAI has announced that image generation function of the API endpoint will be depreciated starting from Mar 21, 2024. As a result, concurrent generation feature will no longer be available.
-> 
+> Unfortunately, NovelAI has depreciated their image generation function of the API endpoint starting from Mar 21, 2024. As a result, concurrent generation feature is no longer available.
+>
 > [Source](https://twitter.com/novelaiofficial/status/1760404186066227673)
+
+## Table of Contents
+
+- [Features](#features)
+- [Table of Contents](#table-of-contents)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Initialization](#initialization)
+  - [Image Generation](#image-generation)
+  - [Image to Image](#image-to-image)
+  - [Inpainting](#inpainting)
+  - [Vibe Transfer](#vibe-transfer)
+  - [Use in CLI](#use-in-cli)
+- [References](#references)
 
 ## Installation
 
-Install with pip:
+> [!NOTE]
+>
+> This package requires Python 3.12 or higher.
+
+Install/update with pip:
 
 ```sh
-pip install novelai
+pip install -U novelai
 ```
 
-Note that this package requires Python **3.12** or higher. For Python 3.7-3.11, install the legacy version instead:
+Note that this package requires Python **3.12** or higher. For lower versions, install the legacy version instead:
 
 ```sh
-pip install novelai-legacy
+pip install -U novelai-legacy
 ```
 
 Legacy branch has the same features as master branch on user side, the only difference is code compatibility.
@@ -61,7 +79,7 @@ By passing `verbose=True`, the method will print the estimated Anlas cost each t
 The full parameter list of `Metadata` can be found in the [class definition](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/metadata.py).
 
 ```python
-from novelai import Metadata, Host, Resolution
+from novelai import Metadata, Resolution
 
 async def main():
     metadata = Metadata(
@@ -73,10 +91,8 @@ async def main():
 
     print(f"Estimated Anlas cost: {metadata.calculate_cost(is_opus=False)}")
 
-    # Choose host between "Host.API" and "Host.WEB"
-    # Both of two hosts work the same for all actions mentioned below
     output = await client.generate_image(
-        metadata, host=Host.WEB, verbose=False, is_opus=False
+        metadata, verbose=False, is_opus=False
     )
 
     for image in output:
@@ -175,33 +191,6 @@ async def main():
 
     for image in output:
         image.save(path="output images", verbose=True)
-
-asyncio.run(main())
-```
-
-### Concurrent Generation
-
-By default, NovelAI only allows one concurrent generating task at a time. However, this wrapper provides the ability to **simultaneously run two concurrent generating tasks** by sending requests to API and web backend respectively.
-
-Note that API and web backend both have limit on concurrent generation. Therefore, running more than two concurrent tasks will result in a `429 Too Many Requests` error.
-
-[Full usage example](https://github.com/HanaokaYuzu/NovelAI-API/blob/master/docs/concurrent_generation.py) is provided under `/docs`.
-
-```python
-async def task_api():
-    await client.generate_image(metadata, host=Host.API)
-    print("API task completed")
-
-async def task_web():
-    await client.generate_image(metadata, host=Host.WEB)
-    print("Web task completed")
-
-async def main():
-    tasks = [
-        asyncio.create_task(task_api()),
-        asyncio.create_task(task_web()),
-    ]
-    await asyncio.wait(tasks)
 
 asyncio.run(main())
 ```

@@ -67,7 +67,10 @@ class Resolution(Enum):
 class Sampler(Enum):
     EULER = "k_euler"
     EULER_ANC = "k_euler_ancestral"
-    DPM = "k_dpmpp_2s_ancestral"
+    DPM2S_ANC = "k_dpmpp_2s_ancestral"
+    DPM2M = "k_dpmpp_2m"
+    DPMSDE = "k_dpmpp_sde"
+    DDIM = "ddim_v3"
 
 
 class Noise(Enum):

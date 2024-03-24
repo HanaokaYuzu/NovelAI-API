@@ -18,6 +18,7 @@ async def task_api():
         negative_prompt=os.getenv("NEGATIVE_PROMPT"),
     )
 
+    # No longer works since Mar 21, 2024
     output = await client.generate_image(
         metadata, host=Host.API, verbose=True, is_opus=True
     )
