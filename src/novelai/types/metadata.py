@@ -103,12 +103,14 @@ class Metadata(BaseModel):
         White is the area to inpaint and black is the rest
 
     | Vibe Transfer
-    reference_image: `str`, optional
-        Base64-encoded image to use as a base image for Vibe Transfer
-    reference_infomation_extracted: `float`, optional
-        Range: 0-1, refer to https://docs.novelai.net/.image/vibetransfer.html#information-extracted
-    reference_strength: `float`, optional
-        Range: 0-1, refer to https://docs.novelai.net/.image/vibetransfer.html#reference-strength
+    reference_image_multiple: `list[str]`, optional
+        List of base64-encoded images to use as base images for Vibe Transfer
+    reference_information_extracted_multiple: `list[float]`, optional
+        List of floats from range 0-1, should be the same length as `reference_image_multiple` and follow the same order
+        Refer to https://docs.novelai.net/.image/vibetransfer.html#information-extracted
+    reference_strength_multiple: `list[float]`, optional
+        List of floats from range 0-1, should be the same length as `reference_image_multiple` and follow the same order
+        Refer to https://docs.novelai.net/.image/vibetransfer.html#reference-strength
         The strength AI uses to emulate visual cues, such as stylistic aspects, colors etc., from the given input image
 
     | Misc
@@ -167,11 +169,13 @@ class Metadata(BaseModel):
     mask: str | None = None
 
     # Vibe Transfer
-    reference_image: str | None = None
-    reference_infomation_extracted: float = Field(
-        default=1, ge=0.01, le=1, multiple_of=0.01
-    )
-    reference_strength: float = Field(default=0.6, ge=0.01, le=1, multiple_of=0.01)
+    reference_image_multiple: list[str] = []
+    reference_information_extracted_multiple: list[
+        Annotated[float, Field(default=1, ge=0.01, le=1, multiple_of=0.01)]
+    ] = []
+    reference_strength_multiple: list[
+        Annotated[float, Field(default=0.6, ge=0.01, le=1, multiple_of=0.01)]
+    ] = []
 
     # Misc
     params_version: Literal[1] = 1
@@ -180,6 +184,51 @@ class Metadata(BaseModel):
 
     @model_validator(mode="after")
     def n_samples_validator(self) -> "Metadata":
+        """
+        Validate the following:
+
+        - If length of `reference_information_extracted_multiple` and `reference_strength_multiple` matches `reference_image_multiple`.
+            If not, fill the missing values with default or truncate the extra values.
+        - If value of `n_samples` exceeds the maximum allowed value based on resolution.
+        """
+
+        if self.reference_image_multiple:
+            if len(self.reference_information_extracted_multiple) > len(
+                self.reference_image_multiple
+            ):
+                self.reference_information_extracted_multiple = (
+                    self.reference_information_extracted_multiple[
+                        : len(self.reference_image_multiple)
+                    ]
+                )
+            elif len(self.reference_information_extracted_multiple) < len(
+                self.reference_image_multiple
+            ):
+                self.reference_information_extracted_multiple += [
+                    1
+                    for _ in range(
+                        len(self.reference_image_multiple)
+                        - len(self.reference_information_extracted_multiple)
+                    )
+                ]
+
+            if len(self.reference_strength_multiple) > len(
+                self.reference_image_multiple
+            ):
+                self.reference_strength_multiple = self.reference_strength_multiple[
+                    : len(self.reference_image_multiple)
+                ]
+            elif len(self.reference_strength_multiple) < len(
+                self.reference_image_multiple
+            ):
+                self.reference_strength_multiple += [
+                    0.6
+                    for _ in range(
+                        len(self.reference_image_multiple)
+                        - len(self.reference_strength_multiple)
+                    )
+                ]
+
         max_n_samples = self.get_max_n_samples()
         if self.n_samples > max_n_samples:
             raise ValueError(

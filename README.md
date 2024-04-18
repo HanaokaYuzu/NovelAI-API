@@ -160,7 +160,7 @@ asyncio.run(main())
 
 ### Vibe Transfer
 
-Vibe transfer doesn't have its own action type. Instead, it is achieved by adding a `reference_image` parameter in Metadata. The reference image needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
+Vibe transfer doesn't have its own action type. Instead, it is achieved by adding a `reference_image_multiple` parameter in Metadata. The reference image needs to be converted into Base64-encoded format. This can be achieved using `base64` module.
 
 ```python
 import base64
@@ -174,9 +174,9 @@ async def main():
         prompt="1girl",
         negative_prompt="bad anatomy",
         res_preset=Resolution.NORMAL_PORTRAIT,
-        reference_image=base_image,
-        reference_infomation_extracted=1,
-        reference_strength=0.6,
+        reference_image_multiple=[base_image],
+        reference_information_extracted_multiple=[1],
+        reference_strength_multiple=[0.6],
     )
 
     output = await client.generate_image(metadata, verbose=True)

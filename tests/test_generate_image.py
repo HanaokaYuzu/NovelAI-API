@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from httpx import AsyncClient
 
-from novelai import NAIClient, Metadata, Host, Model, Action, Resolution
+from novelai import NAIClient, Metadata, Host, Model, Action
 from novelai.exceptions import (
     APIError,
     AuthError,
@@ -36,7 +36,7 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
     )
     async def test_generate(self):
         await self.naiclient.init()
-        metadata = Metadata(prompt="1girl")
+        metadata = Metadata(prompt="1girl", width=320, height=320)
 
         try:
             output = await self.naiclient.generate_image(metadata, host=Host.WEB)
@@ -58,7 +58,8 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         metadata = Metadata(
             prompt="1girl",
             action=Action.IMG2IMG,
-            res_preset=Resolution.NORMAL_PORTRAIT,
+            width=320,
+            height=320,
             image=base_image,
             strength=0.45,
             noise=0.1,
@@ -84,7 +85,8 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
             prompt="1girl",
             model=Model.V3INP,
             action=Action.INPAINT,
-            res_preset=Resolution.NORMAL_PORTRAIT,
+            width=320,
+            height=320,
             image=base_image,
             mask=mask,
         )
@@ -108,10 +110,11 @@ class TestGenerateImage(unittest.IsolatedAsyncioTestCase):
         metadata = Metadata(
             prompt="1girl",
             action=Action.GENERATE,
-            res_preset=Resolution.NORMAL_PORTRAIT,
-            reference_image=base_image,
-            reference_infomation_extracted=1,
-            reference_strength=0.6,
+            width=320,
+            height=320,
+            reference_image_multiple=[base_image],
+            reference_information_extracted_multiple=[1],
+            reference_strength_multiple=[0.6],
         )
 
         try:
